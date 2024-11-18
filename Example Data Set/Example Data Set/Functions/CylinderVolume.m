@@ -21,7 +21,7 @@ l   = Cyl.ConRod;
 CAl     = Ca-Cyl.TDCangle;
 Vd      = pi*(B/2)^2*S;
 Vc      = Vd/(cr-1);
-V       = Vc + Vd*(sind(CAl+90)+1)/2; % 'sind' is the sine function taking arguments in degrees instead of radians
+V       = Vc + Vd*(sind(CAl+90)+1)/2;                                       % 'sind' is the sine function taking arguments in degrees instead of radians
 
 
 

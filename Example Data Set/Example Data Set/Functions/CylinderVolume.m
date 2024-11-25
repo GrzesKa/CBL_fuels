@@ -17,7 +17,7 @@
         cr  = Cyl.CompressionRatio;
         r   = S/2;
         l   = Cyl.ConRod;
-        %-------------------------------------------------------------------------------------------------------
+        %----------------------------------------------------------------------
  
         % Calculate minimum and maximum cylinder volumes
         Vdiff = pi / 4 * B^2 * S; % Displacement volume

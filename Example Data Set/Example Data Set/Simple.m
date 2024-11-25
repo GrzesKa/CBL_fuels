@@ -77,7 +77,10 @@ set(gca,'XTick',[0.02 0.05 0.1 0.2 0.5 0.8],...
 title({'pV-diagram'})
 
 %% Constants
-gamma = 1.3; % Ratio of specific heats, this is used for now
+%Cp = CpNasa(T, )
+%Cv = CvNasa(T, )
+
+gamma = 1.3;        % Ratio of specific heats, this is used for now
 
 %% Compute Volume and Derivatives
 V = CylinderVolume(Ca, Cyl); % Calculate volume at each crank angle
@@ -88,12 +91,44 @@ dpdCA = gradient(p, diff(Ca(1:2))); % Approximation of dp/dCA
 %% Compute aROHR
 aROHR = (gamma / (gamma - 1)) * p .* dVdCA + (1 / (gamma - 1)) * V .* dpdCA;
 
+%% Compute Cumulative Heat Release (aHR)
+aHR = cumtrapz(Ca(:, iselect), aROHR(:, iselect)); % Cumulative integral of aROHR
+
+%% Plot Cumulative Heat Release (aHR)
+f4 = figure(4);
+set(f4, 'Position', [400 400 800 400]); % Figure size
+plot(Ca(:, iselect), aHR, 'b', 'LineWidth', 1.5); % Cumulative Heat Release
+hold on;
+xlabel('Crank Angle (°)');
+ylabel('aHR [J]');
+xlim([-45 135]);
+grid on;
+title('Cumulative Heat Release (aHR) vs Crank Angle');
+
+% Annotate important points
+hold on;
+[~, idx10] = min(abs(aHR - 0.1 * max(aHR))); % Find index for 10% heat release
+[~, idx50] = min(abs(aHR - 0.5 * max(aHR))); % Find index for 50% heat release
+[~, idx90] = min(abs(aHR - 0.9 * max(aHR))); % Find index for 90% heat release
+
+plot(Ca(idx10, iselect), aHR(idx10), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 10%
+text(Ca(idx10, iselect), aHR(idx10), '10%', 'VerticalAlignment', 'bottom');
+
+plot(Ca(idx50, iselect), aHR(idx50), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 50%
+text(Ca(idx50, iselect), aHR(idx50), '50%', 'VerticalAlignment', 'bottom');
+
+plot(Ca(idx90, iselect), aHR(idx90), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 90%
+text(Ca(idx90, iselect), aHR(idx90), '90%', 'VerticalAlignment', 'bottom');
+
+hold off;
+
 %% Plot aROHR
 f3 = figure(3);
 set(f3, 'Position', [400 400 800 400]); % Figure size
 plot(Ca(:, iselect), aROHR(:, iselect), 'LineWidth', 1); % Plot for selected cycle
 xlabel('Crank Angle (°)');
 ylabel('aROHR [J/°CA]');
-xlim([-360 360]);
+xlim([-45 135]);
+%ylim([-20 100])
 grid on;
 title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');

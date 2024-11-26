@@ -91,35 +91,47 @@ dpdCA = gradient(p, diff(Ca(1:2))); % Approximation of dp/dCA
 %% Compute aROHR
 aROHR = (gamma / (gamma - 1)) * p .* dVdCA + (1 / (gamma - 1)) * V .* dpdCA;
 
-%% Compute Cumulative Heat Release (aHR)
-aHR = cumtrapz(Ca(:, iselect), aROHR(:, iselect)); % Cumulative integral of aROHR
+% Define a threshold to detect start of combustion
+threshold = max(aROHR(:, iselect)) * 0.01; % 1% of peak aROHR, adjust as needed
 
-%% Plot Cumulative Heat Release (aHR)
-f4 = figure(4);
-set(f4, 'Position', [400 400 800 400]); % Figure size
-plot(Ca(:, iselect), aHR, 'b', 'LineWidth', 1.5); % Cumulative Heat Release
+%% Compute Cumulative Heat Release (aHR)
+% Find the start of combustion (beginning of heat release)
+threshold = max(aROHR(:, iselect)) * 0.01; % Set 1% of peak aROHR as threshold
+idx_start = find(aROHR(:, iselect) > threshold, 1, 'first'); % Find first significant heat release
+
+% Slice data starting from the detected combustion point
+Ca_from_start = Ca(idx_start:end, iselect);       % Crank angle from start of combustion
+aROHR_from_start = aROHR(idx_start:end, iselect); % aROHR from start of combustion
+
+% Perform cumulative integration
+aHR_from_start = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release
+
+% Plot cumulative heat release (aHR)
+figure;
+plot(Ca_from_start, aHR_from_start, 'b', 'LineWidth', 1.5); % Cumulative Heat Release
 hold on;
-xlabel('Crank Angle (°)');
+
+% Annotate important points (10%, 50%, 90%)
+[~, idx10] = min(abs(aHR_from_start - 0.1 * max(aHR_from_start)));
+[~, idx50] = min(abs(aHR_from_start - 0.5 * max(aHR_from_start)));
+[~, idx90] = min(abs(aHR_from_start - 0.9 * max(aHR_from_start)));
+
+% Plot points and labels
+plot(Ca_from_start(idx10), aHR_from_start(idx10), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 10%
+text(Ca_from_start(idx10), aHR_from_start(idx10), '10%', 'VerticalAlignment', 'bottom');
+
+plot(Ca_from_start(idx50), aHR_from_start(idx50), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 50%
+text(Ca_from_start(idx50), aHR_from_start(idx50), '50%', 'VerticalAlignment', 'bottom');
+
+plot(Ca_from_start(idx90), aHR_from_start(idx90), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 90%
+text(Ca_from_start(idx90), aHR_from_start(idx90), '90%', 'VerticalAlignment', 'bottom');
+
+% Add plot details
+xlabel('Crank Angle [deg]');
 ylabel('aHR [J]');
+title('Cumulative Heat Release (aHR) vs Crank Angle');
 xlim([-45 135]);
 grid on;
-title('Cumulative Heat Release (aHR) vs Crank Angle');
-
-% Annotate important points
-hold on;
-[~, idx10] = min(abs(aHR - 0.1 * max(aHR))); % Find index for 10% heat release
-[~, idx50] = min(abs(aHR - 0.5 * max(aHR))); % Find index for 50% heat release
-[~, idx90] = min(abs(aHR - 0.9 * max(aHR))); % Find index for 90% heat release
-
-plot(Ca(idx10, iselect), aHR(idx10), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 10%
-text(Ca(idx10, iselect), aHR(idx10), '10%', 'VerticalAlignment', 'bottom');
-
-plot(Ca(idx50, iselect), aHR(idx50), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 50%
-text(Ca(idx50, iselect), aHR(idx50), '50%', 'VerticalAlignment', 'bottom');
-
-plot(Ca(idx90, iselect), aHR(idx90), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 90%
-text(Ca(idx90, iselect), aHR(idx90), '90%', 'VerticalAlignment', 'bottom');
-
 hold off;
 
 %% Plot aROHR

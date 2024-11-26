@@ -8,7 +8,8 @@
 clear all; clc;close all;
 addpath( "Functions","Nasa");
 %% Units
-mm      = 1e-3;dm=0.1;
+mm      = 1e-3;
+dm      = 0.1;
 bara    = 1e5;
 MJ      = 1e6;
 kWhr    = 1000*3600;
@@ -29,11 +30,11 @@ Cyl.ConRod              = 136.5*mm;
 Cyl.TDCangle            = 180;
 % -- Valve closing events can sometimes be seen in fast oscillations in the pressure signal (due
 % to the impact when the Valve hits its seat).
-CaIVO = -355;
-CaIVC = -135;
-CaEVO = 149;
-CaEVC = -344;
-CaSOI = -3.2;
+CaIVO = -355; %Intake valve opens
+CaIVC = -135; %Intake valve closes
+CaEVO = 149; %Exhaust valve opens
+CaEVC = -344; %Exhaust valve closes
+CaSOI = -3.2; %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXPERIMENT
 % Write a function [V] = CylinderVolume(Ca,Cyl) that will give you Volume
 % for the given Cyl geometry. If you can do that you can create pV-diagrams
 %% Load data (if txt file)
@@ -50,7 +51,7 @@ set(f1,'Position',[ 200 800 1200 400]);             % Just a size I like. Your c
 pp = plot(Ca,p/bara,'LineWidth',1);                 % Plots the whole matrix
 xlabel('Ca');ylabel('p [bar]');                     % Always add axis labels
 xlim([-360 360]);ylim([0 50]);                      % Matter of taste
-iselect = 10;                                    % Plot cycle 10 again in the same plot to emphasize it. Just to show how to access individual cycles.
+iselect = 10;                                       % Plot cycle 10 again in the same plot to emphasize it. Just to show how to access individual cycles.
 line(Ca(:,iselect),p(:,iselect)/bara,'LineWidth',2,'Color','r');
 YLIM = ylim;
 % Add some extras to the plot
@@ -84,55 +85,16 @@ gamma = 1.3;        % Ratio of specific heats, this is used for now
 
 %% Compute Volume and Derivatives
 V = CylinderVolume(Ca, Cyl); % Calculate volume at each crank angle
-dVdCA = gradient(V, diff(Ca(1:2))); % Approximation of dV/dCA
 
-dpdCA = gradient(p, diff(Ca(1:2))); % Approximation of dp/dCA
+
+dVdCA = smoothdata(gradient(V, diff(Ca(1:2))), 'movmean', 5); % Approximation of dV/dCA
+
+dpdCA = smoothdata(gradient(p, diff(Ca(1:2))), 'movmean', 5); % Approximation of dp/dCA
+
 
 %% Compute aROHR
-aROHR = (gamma / (gamma - 1)) * p .* dVdCA + (1 / (gamma - 1)) * V .* dpdCA;
+aROHR = -(gamma / (gamma - 1)) * p .* dVdCA - (1 / (gamma - 1)) * V .* dpdCA;
 
-% Define a threshold to detect start of combustion
-threshold = max(aROHR(:, iselect)) * 0.01; % 1% of peak aROHR, adjust as needed
-
-%% Compute Cumulative Heat Release (aHR)
-% Find the start of combustion (beginning of heat release)
-threshold = max(aROHR(:, iselect)) * 0.01; % Set 1% of peak aROHR as threshold
-idx_start = find(aROHR(:, iselect) > threshold, 1, 'first'); % Find first significant heat release
-
-% Slice data starting from the detected combustion point
-Ca_from_start = Ca(idx_start:end, iselect);       % Crank angle from start of combustion
-aROHR_from_start = aROHR(idx_start:end, iselect); % aROHR from start of combustion
-
-% Perform cumulative integration
-aHR_from_start = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release
-
-% Plot cumulative heat release (aHR)
-figure;
-plot(Ca_from_start, aHR_from_start, 'b', 'LineWidth', 1.5); % Cumulative Heat Release
-hold on;
-
-% Annotate important points (10%, 50%, 90%)
-[~, idx10] = min(abs(aHR_from_start - 0.1 * max(aHR_from_start)));
-[~, idx50] = min(abs(aHR_from_start - 0.5 * max(aHR_from_start)));
-[~, idx90] = min(abs(aHR_from_start - 0.9 * max(aHR_from_start)));
-
-% Plot points and labels
-plot(Ca_from_start(idx10), aHR_from_start(idx10), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 10%
-text(Ca_from_start(idx10), aHR_from_start(idx10), '10%', 'VerticalAlignment', 'bottom');
-
-plot(Ca_from_start(idx50), aHR_from_start(idx50), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 50%
-text(Ca_from_start(idx50), aHR_from_start(idx50), '50%', 'VerticalAlignment', 'bottom');
-
-plot(Ca_from_start(idx90), aHR_from_start(idx90), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 90%
-text(Ca_from_start(idx90), aHR_from_start(idx90), '90%', 'VerticalAlignment', 'bottom');
-
-% Add plot details
-xlabel('Crank Angle [deg]');
-ylabel('aHR [J]');
-title('Cumulative Heat Release (aHR) vs Crank Angle');
-xlim([-45 135]);
-grid on;
-hold off;
 
 %% Plot aROHR
 f3 = figure(3);
@@ -144,3 +106,45 @@ xlim([-45 135]);
 %ylim([-20 100])
 grid on;
 title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
+
+%% Find the Index for CaSOI
+[~, idx_start] = min(abs(Ca(:, iselect) - CaSOI)); % Find index closest to CaSOI
+
+% Slice data starting at CaSOI to the last data point
+Ca_from_start = Ca(idx_start:end, iselect); % Crank angle from CaSOI to the end
+aROHR_from_start = aROHR(idx_start:end, iselect); % aROHR from CaSOI to the end
+
+%% Perform Cumulative Integration
+aHR = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release
+
+%% Plot Cumulative Heat Release (aHR)
+figure;
+plot(Ca_from_start, aHR, 'b', 'LineWidth', 2); % Plot cumulative heat release
+hold on;
+
+
+% Annotate 10%, 50%, and 90% heat release points
+[~, idx10] = min(abs(aHR - 0.1 * max(aHR)));
+[~, idx50] = min(abs(aHR - 0.5 * max(aHR)));
+[~, idx90] = min(abs(aHR - 0.9 * max(aHR)));
+
+plot(Ca_from_start(idx10), aHR(idx10), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 10%
+text(Ca_from_start(idx10), aHR(idx10) + 20, '10%', 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center');
+
+plot(Ca_from_start(idx50), aHR(idx50), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 50%
+text(Ca_from_start(idx50), aHR(idx50) + 20, '50%', 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center');
+
+plot(Ca_from_start(idx90), aHR(idx90), 'yo', 'MarkerSize', 8, 'MarkerFaceColor', 'yellow'); % 90%
+text(Ca_from_start(idx90), aHR(idx90) + 20, '90%', 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center');
+
+% Add reference lines
+line([15 15], ylim, 'Color', 'k', 'LineStyle', '-', 'LineWidth', 1.5); % Vertical line at 15° CA
+
+% Add plot details
+xlabel('Crank Angle [deg]');
+ylabel('aHR [J]');
+title('Cumulative Heat Release (aHR) vs Crank Angle');
+xlim([-10 300]); % Adjust x-axis limits
+ylim([0 1000]); % Adjust y-axis limits
+grid on;
+hold off;

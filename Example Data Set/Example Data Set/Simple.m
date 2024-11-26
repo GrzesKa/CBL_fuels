@@ -86,7 +86,6 @@ gamma = 1.3;        % Ratio of specific heats, this is used for now
 %% Compute Volume and Derivatives
 V = CylinderVolume(Ca, Cyl); % Calculate volume at each crank angle
 
-
 dVdCA = smoothdata(gradient(V, diff(Ca(1:2))), 'movmean', 5); % Approximation of dV/dCA
 
 dpdCA = smoothdata(gradient(p, diff(Ca(1:2))), 'movmean', 5); % Approximation of dp/dCA
@@ -138,13 +137,13 @@ plot(Ca_from_start(idx90), aHR(idx90), 'yo', 'MarkerSize', 8, 'MarkerFaceColor',
 text(Ca_from_start(idx90), aHR(idx90) + 20, '90%', 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center');
 
 % Add reference lines
-line([15 15], ylim, 'Color', 'k', 'LineStyle', '-', 'LineWidth', 1.5); % Vertical line at 15° CA
+line([0 0], ylim, 'Color', 'k', 'LineStyle', '-', 'LineWidth', 1.5); % Vertical line at 0° CA
 
 % Add plot details
 xlabel('Crank Angle [deg]');
 ylabel('aHR [J]');
 title('Cumulative Heat Release (aHR) vs Crank Angle');
 xlim([-10 300]); % Adjust x-axis limits
-ylim([0 1000]); % Adjust y-axis limits
+ylim([-100 5000]); % Adjust y-axis limits
 grid on;
 hold off;

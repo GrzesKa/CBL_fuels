@@ -17,6 +17,62 @@ volperc = 0.01; % Emissions are in volume percentages
 ppm     = 1e-6; % Some are in ppm (also a volume- not a mass-fraction)
 g       = 1e-3;
 s       = 1;
+
+Ncycles = 69;  % Define the number of cycles
+RPM = 1500; %Defining the RPM
+%% Fuel properties
+
+% Select fuel
+selectedFuel = 'Diesel';
+
+
+% Define fuel properties
+FuelTable = table(...
+    {'Diesel'; 'HVO'; 'FAME'; 'GTL'}, ...  % Fuel names
+    [43e6; 43.7e6; 38.3e6; 44e6], ...                     % Lower Heating Value [J/kg]
+    [52.2; 74.5; 55.2; 74], ...                     % Cetane number [-]
+    [2.62; 1.5; 2.1; 2.5], ...                     % CO2 [kg/L]
+    [9; 7; 11; 7], ...                              % NOx [g/kWh]
+    [836.1; 764; 882; 777.1], ...                     % Density [kg/m^3]
+    [2.7638; 2.88; 4.43; 2.5774], ...               % Viscosity [mm^2/s]
+    'VariableNames', {'Fuel','LHV', 'Cetane', 'CO2','NOx', 'Density','Viscosity'});
+
+%% KPI function implementations
+
+% Pre-allocate mass flow rate array
+% m_dot_fuel_all = zeros(1, Ncycles);
+% 
+% for i = 1:Ncycles
+%     % Extract the pressure and volume data for the current cycle
+%     %V_cycle = V(:, i);  % Volume data for cycle i
+%     p_cycle = p(:, i);  % Pressure data for cycle i
+% 
+%     % Calculate the work done during the cycle using numerical integration
+%     W_cycle = trapz(V_cycle, p_cycle);  % Work in Joules (area under the p-V curve)
+% 
+%     % Calculate brake power (in kW)
+%     P_cycle = (W_cycle * RPM) / (2 * pi * 60);  % Power in kW
+%     
+%     %assigning LHV value
+%     LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, selectedFuel));
+% 
+%     % Calculate the mass flow rate of fuel (kg/s)
+%     m_dot_fuel_all(i) = (P_cycle * 1000) / LHV;  % Convert power to watts and use LHV
+% end
+% 
+% % Pre-allocate BSFC storage for all cycles
+% BSFC_all = zeros(1, Ncycles); 
+% 
+% for i = 1:Ncycles
+%     % Extract the pressure and volume data for the current cycle (i)
+%     V_cycle = V(:, i);  % Volume for cycle i
+%     p_cycle = p(:, i);  % Pressure for cycle i
+%     
+%     % Calculate BSFC using the ComputeBSFC function
+%     BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, mfuel); % Pass pressure, volume, RPM, and fuel mass flow rate
+% end
+
+
 %% Load NASA maybe you need it at some point?
 % Global (for the Nasa database in case you wish to use it).
 global Runiv

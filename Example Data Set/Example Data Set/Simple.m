@@ -63,49 +63,66 @@ CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXP
 % Write a function [V] = CylinderVolume(Ca,Cyl) that will give you Volume
 % for the given Cyl geometry. If you can do that you can create pV-diagrams
 
-%% Load data (if txt file)
-FullName        = fullfile('Data','ExampleDataSet.txt');
-dataIn          = table2array(readtable(FullName));
-[Nrows,Ncols]   = size(dataIn);                    % Determine size of array
+%% Load data (of txt file)
+FullName            = fullfile('Data','ExampleDataSet.txt');
+dataIn              = table2array(readtable(FullName));
+[Nrows,Ncols]       = size(dataIn);                    % Determine size of array
 NdatapointsperCycle = 720/0.2;                     % Nrows is a multitude of NdatapointsperCycle
-Ncycles         = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
-Ca              = reshape(dataIn(:,1),[],Ncycles); % Both p and Ca are now matrices of size (NCa,Ncycles)
-p               = reshape(dataIn(:,2),[],Ncycles)*bara; % type 'help reshape' in the command window if you want to know what it does (reshape is a Matlab buit-in command
+Ncycles             = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
+Ca_matrix                 = reshape(dataIn(:,1),NdatapointsperCycle,Ncycles); % Both p and Ca are now matrices of size (NCa,Ncycles)
+p_matrix                   = reshape(dataIn(:,2),NdatapointsperCycle,Ncycles)*bara; % type 'help reshape' in the command window if you want to know what it does (reshape is a Matlab buit-in command
+
+%% Work and Volume Calculation
+
+% Volume calculation
+V_matrix = CylinderVolume(Ca_matrix, Cyl);  % Calculate volume at each crank angle
+
+% Work calculation
+W_all = zeros(1, Ncycles); % Preallocate work matrix
+for i = 1:Ncycles
+    V_cycle = V_matrix(:,i);
+    p_cycle = p_matrix(:,i);
+    W_all(i) = trapz(V_cycle, p_cycle); % Numerical integration (trapezoidal)
+end
+
+% Display or save results
+disp('Work for each cycle:');
+disp(W_all);
+
+% Plot p-V diagram for one cycle (e.g., cycle 1)
+figure;
+plot(V_matrix(:,1), p_matrix(:,1));
+xlabel('Volume [m^3]');
+ylabel('Pressure [Pa]');
+title('p-V Diagram for Cycle 1');
+grid on;
+
 
 %% KPI function implementations
 
-% Pre-allocate BSFC storage for all cycles
-% BSFC_all = zeros(1, Ncycles);  % empty matrix to store values
-% V = zero(1, Ncycles);
-% p =zero(1, Ncycles);
-% mfuel = 
+Pre-allocate BSFC storage for all cycles
+BSFC_all = zeros(1, Ncycles);  % empty matrix to store values
+V = zero(1, Ncycles);
+p =zero(1, Ncycles);
+mfuel = 10;
 
-% for i = 1:Ncycles
-%     % Extract the pressure and volume data for the current cycle (i)
-%     V_cycle = V(:, i);  % Volume for cycle i
-%     p_cycle = p(:, i);  % Pressure for cycle i
-% 
-%     % Calculate BSFC using the ComputeBSFC function
-%     BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, mfuel); % Pass pressure, volume, RPM, and fuel mass flow rate
-% end
+for i = 1:Ncycles
+    % Extract the pressure and volume data for the current cycle (i)
+    V_cycle = V_matrix(:, i);  % Volume for cycle i
+    p_cycle = p_matrix(:, i);  % Pressure for cycle i
 
-% Calculating Work
- W = zeros(1, Ncycles);
- V = CylinderVolume(Ca(:,iselect),Cyl);
- 
- W = ComputeW(p, V)
-
-
-
+    % Calculate BSFC using the ComputeBSFC function
+    BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, mfuel); % Pass pressure, volume, RPM, and fuel mass flow rate
+end
 
 %% Plotting 
 f1=figure(1);
 set(f1,'Position',[ 200 800 1200 400]);             % Just a size I like. Your choice
-pp = plot(Ca,p/bara,'LineWidth',1);                 % Plots the whole matrix
+pp = plot(Ca_matrix,p_matrix/bara,'LineWidth',1);                 % Plots the whole matrix
 xlabel('Ca');ylabel('p [bar]');                     % Always add axis labels
 xlim([-360 360]);ylim([0 50]);                      % Matter of taste
 iselect = 10;                                       % Plot cycle 10 again in the same plot to emphasize it. Just to show how to access individual cycles.
-line(Ca(:,iselect),p(:,iselect)/bara,'LineWidth',2,'Color','r');
+line(Ca_matrix(:,iselect),p_matrix(:,iselect)/bara,'LineWidth',2,'Color','r');
 YLIM = ylim;
 % Add some extras to the plot
 line([CaIVC CaIVC],YLIM,'LineWidth',1,'Color','b'); % Plot a vertical line at IVC. Just for reference not a particular reason.
@@ -115,17 +132,20 @@ title('All cycles in one plot.')
 
 %% pV-diagram
 
-V = CylinderVolume(Ca(:,iselect),Cyl);
+V_matrix = CylinderVolume(Ca_matrix(:,iselect),Cyl);
+
 f2 = figure(2);
 set(f2,'Position',[ 200 400 600 800]);              % Just a size I like. Your choice
+
 subplot(2,1,1)
-plot(V/dm^3,p(:,iselect)/bara);
+plot(V_matrix/dm^3,p_matrix(:,iselect)/bara);
 xlabel('V [dm^3]');ylabel('p [bar]');                      % Always add axis labels
 xlim([0 0.8]);ylim([0.5 50]);                              % Matter of taste
 set(gca,'XTick',[0:0.1:0.8],'XGrid','on','YGrid','on');    % I like specific axis labels. Matter of taste
 title({'pV-diagram'})
+
 subplot(2,1,2)
-loglog(V/dm^3,p(:,iselect)/bara);
+loglog(V_matrix/dm^3,p_matrix(:,iselect)/bara);
 xlabel('V [dm^3]');ylabel('p [bar]');               % Always add axis labels
 xlim([0.02 0.8]);ylim([0 50]);                      % Matter of taste
 set(gca,'XTick',[0.02 0.05 0.1 0.2 0.5 0.8],...
@@ -140,21 +160,21 @@ gamma = 1.3;        % Ratio of specific heats, this is used for now
 
 %% Compute Volume and Derivatives
 
-V = CylinderVolume(Ca, Cyl);  % Calculate volume at each crank angle
+%V = CylinderVolume(Ca, Cyl);  % Calculate volume at each crank angle
 
-dVdCA = smoothdata(gradient(V, diff(Ca(1:2))), 'movmean', 5); % Approximation of dV/dCA
+dVdCA = smoothdata(gradient(V_matrix, diff(Ca_matrix(1:2))), 'movmean', 5); % Approximation of dV/dCA
 
-dpdCA = smoothdata(gradient(p, diff(Ca(1:2))), 'movmean', 5); % Approximation of dp/dCA
+dpdCA = smoothdata(gradient(p_matrix, diff(Ca_matrix(1:2))), 'movmean', 5); % Approximation of dp/dCA
 
 
 %% Compute aROHR
-aROHR = -(gamma / (gamma - 1)) * p .* dVdCA - (1 / (gamma - 1)) * V .* dpdCA;
+aROHR = -(gamma / (gamma - 1)) * p_matrix .* dVdCA - (1 / (gamma - 1)) * V_matrix .* dpdCA;
 
 
 %% Plot aROHR
 f3 = figure(3);
 set(f3, 'Position', [400 400 800 400]); % Figure size
-plot(Ca(:, iselect), aROHR(:, iselect), 'LineWidth', 1); % Plot for selected cycle
+plot(Ca_matrix(:, iselect), aROHR(:, iselect), 'LineWidth', 1); % Plot for selected cycle
 xlabel('Crank Angle (°)');
 ylabel('aROHR [J/°CA]');
 xlim([-45 135]);
@@ -163,10 +183,10 @@ grid on;
 title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
 
 %% Find the Index for CaSOI
-[~, idx_start] = min(abs(Ca(:, iselect) - CaSOI)); % Find index closest to CaSOI
+[~, idx_start] = min(abs(Ca_matrix(:, iselect) - CaSOI)); % Find index closest to CaSOI
 
 % Slice data starting at CaSOI to the last data point
-Ca_from_start = Ca(idx_start:end, iselect); % Crank angle from CaSOI to the end
+Ca_from_start = Ca_matrix(idx_start:end, iselect); % Crank angle from CaSOI to the end
 aROHR_from_start = aROHR(idx_start:end, iselect); % aROHR from CaSOI to the end
 
 %% Perform Cumulative Integration

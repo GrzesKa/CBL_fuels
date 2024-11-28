@@ -115,8 +115,11 @@ for i = 1:Ncycles
     m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
 
     % Calculate BSFC using the ComputeBSFC function
-    BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, m_fuel_cycle) % Pass pressure, volume, RPM, and fuel mass flow rate
+    BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, m_fuel_cycle); % Pass pressure, volume, RPM, and fuel mass flow rate
 end
+
+disp('BSFC for each cycle:');
+disp(BSFC_all);
 
 % Efficiency calculation
 
@@ -128,9 +131,11 @@ for i = 1:Ncycles
     m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
 
 
-    Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, p_cycle, V_cycle, RPM)
-
+    Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, W_all);
 end
+
+disp('Efficiency for each cycle:');
+disp(Efficiency_all);
 
 %% Plotting 
 f1=figure(1);

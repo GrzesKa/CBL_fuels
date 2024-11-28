@@ -67,15 +67,15 @@ CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXP
 FullName            = fullfile('Data','ExampleDataSet.txt');
 dataIn              = table2array(readtable(FullName));
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
-NdatapointsperCycle = 720/0.2;                     % Nrows is a multitude of NdatapointsperCycle
+NdatapointsperCycle = 720/0.2;                         % Nrows is a multitude of NdatapointsperCycle
 Ncycles             = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
-% Check the size of matricx matches
+% Check the size of matrix matches
 disp(['Rows in dataIn: ', num2str(Nrows)]);
 disp(['Expected rows (NdatapointsperCycle * Ncycles): ', num2str(NdatapointsperCycle * Ncycles)]);
 
-Ca_matrix           = reshape(dataIn(:,1),NdatapointsperCycle,Ncycles); % Both p and Ca are now matrices of size (NCa,Ncycles)
-p_matrix            = reshape(dataIn(:,2),NdatapointsperCycle,Ncycles)*bara; % type 'help reshape' in the command window if you want to know what it does (reshape is a Matlab buit-in command
-m_fuel_matrix       = reshape(dataIn(:,3),NdatapointsperCycle,Ncycles);
+Ca_matrix           = reshape(dataIn(:,1),NdatapointsperCycle,Ncycles);      % Both p and Ca are now matrices of size (NCa,Ncycles)
+p_matrix            = reshape(dataIn(:,2),NdatapointsperCycle,Ncycles)*bara; % This forms the Matrix For the p values for each Ca per cycle and converts the pressure to SI units 
+m_fuel_matrix       = reshape(dataIn(:,3),NdatapointsperCycle,Ncycles);      % Same thing as for pressure, but without the bara function
 
 %% Work and Volume Calculation
 
@@ -83,11 +83,11 @@ m_fuel_matrix       = reshape(dataIn(:,3),NdatapointsperCycle,Ncycles);
 V_matrix = CylinderVolume(Ca_matrix, Cyl);  % Calculate volume at each crank angle
 
 % Work calculation
-W_all = zeros(1, Ncycles); % Preallocate work matrix
+W_all = zeros(1, Ncycles);              % Preallocate work matrix
 for i = 1:Ncycles
     V_cycle = V_matrix(:,i);
     p_cycle = p_matrix(:,i);
-    W_all(i) = trapz(V_cycle, p_cycle); % Numerical integration (trapezoidal)
+    W_all(i) = trapz(V_cycle, p_cycle); % Numerical integration (trapezoidal) to find work per cycle
 end
 
 % Display or save results
@@ -110,12 +110,12 @@ BSFC_all = zeros(1, Ncycles);  % empty matrix to store values
 
 for i = 1:Ncycles
     % Extract the pressure and volume data for the current cycle (i)
-    V_cycle = V_matrix(:, i);  % Volume for cycle i
-    p_cycle = p_matrix(:, i);  % Pressure for cycle i
+    V_cycle = V_matrix(:, i);          % Volume for cycle i
+    p_cycle = p_matrix(:, i);          % Pressure for cycle i
     m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
 
     % Calculate BSFC using the ComputeBSFC function
-    BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, m_fuel_cycle); % Pass pressure, volume, RPM, and fuel mass flow rate
+    BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, m_fuel_cycle); % Calculates the BSFC values per cycle and adds them to the empty matrix
 end
 
 disp('BSFC for each cycle:');
@@ -126,21 +126,31 @@ disp(BSFC_all);
 Efficiency_all = zeros(1, Ncycles); 
 
 for i = 1:Ncycles
-    V_cycle = V_matrix(:, i);  % Volume for cycle i
-    p_cycle = p_matrix(:, i);  % Pressure for cycle i
-    m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
+    V_cycle = V_matrix(:, i);           % Volume for cycle i
+    p_cycle = p_matrix(:, i);           % Pressure for cycle i
+    m_fuel_cycle = m_fuel_matrix(:,i);  % Mass fuel for cycle i
 
 
-    Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, V_cycle, p_cycle, RPM);
+    Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, V_cycle, p_cycle, RPM); %Calculates the efficiency per cycle and adds to the empty matrix 
 end
 
 disp('Efficiency for each cycle:');
 disp(Efficiency_all);
 
+%CO2 Emissions (incomplete)
+
+bsCO2_all = zeros(1, Ncycles);
+
+for i = 1:Ncycles
+    m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
+    bsCO2(i) = CO2Emissions(m_fuel_matrix, P, selectedFuel, Fueltable);
+end
+
+disp(bsCO2_all);
 %% Plotting 
 f1=figure(1);
 set(f1,'Position',[ 200 800 1200 400]);             % Just a size I like. Your choice
-pp = plot(Ca_matrix,p_matrix/bara,'LineWidth',1);                 % Plots the whole matrix
+pp = plot(Ca_matrix,p_matrix/bara,'LineWidth',1);   % Plots the whole matrix
 xlabel('Ca');ylabel('p [bar]');                     % Always add axis labels
 xlim([-360 360]);ylim([0 50]);                      % Matter of taste
 iselect = 10;                                       % Plot cycle 10 again in the same plot to emphasize it. Just to show how to access individual cycles.

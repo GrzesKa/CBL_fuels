@@ -28,71 +28,41 @@ selectedFuel = 'Diesel';
 
 % Define fuel properties
 FuelTable = table(...
-    {'Diesel'; 'HVO'; 'FAME'; 'GTL'}, ...  % Fuel names
-    [43e6; 43.7e6; 38.3e6; 44e6], ...                     % Lower Heating Value [J/kg]
-    [52.2; 74.5; 55.2; 74], ...                     % Cetane number [-]
-    [2.62; 1.5; 2.1; 2.5], ...                     % CO2 [kg/L]
-    [9; 7; 11; 7], ...                              % NOx [g/kWh]
-    [836.1; 764; 882; 777.1], ...                     % Density [kg/m^3]
-    [2.7638; 2.88; 4.43; 2.5774], ...               % Viscosity [mm^2/s]
+    {'Diesel'; 'HVO'; 'FAME'; 'GTL'}, ...        % Fuel names
+    [43e6; 43.7e6; 38.3e6; 44e6], ...            % Lower Heating Value [J/kg]
+    [52.2; 74.5; 55.2; 74], ...                  % Cetane number [-]
+    [2.62; 1.5; 2.1; 2.5], ...                   % CO2 [kg/L]
+    [9; 7; 11; 7], ...                           % NOx [g/kWh]
+    [836.1; 764; 882; 777.1], ...                % Density [kg/m^3]
+    [2.7638; 2.88; 4.43; 2.5774], ...            % Viscosity [mm^2/s]
     'VariableNames', {'Fuel','LHV', 'Cetane', 'CO2','NOx', 'Density','Viscosity'});
-
-%% KPI function implementations
-
-% Pre-allocate mass flow rate array
-% m_dot_fuel_all = zeros(1, Ncycles);
-% 
-% for i = 1:Ncycles
-%     % Extract the pressure and volume data for the current cycle
-%     %V_cycle = V(:, i);  % Volume data for cycle i
-%     p_cycle = p(:, i);  % Pressure data for cycle i
-% 
-%     % Calculate the work done during the cycle using numerical integration
-%     W_cycle = trapz(V_cycle, p_cycle);  % Work in Joules (area under the p-V curve)
-% 
-%     % Calculate brake power (in kW)
-%     P_cycle = (W_cycle * RPM) / (2 * pi * 60);  % Power in kW
-%     
-%     %assigning LHV value
-%     LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, selectedFuel));
-% 
-%     % Calculate the mass flow rate of fuel (kg/s)
-%     m_dot_fuel_all(i) = (P_cycle * 1000) / LHV;  % Convert power to watts and use LHV
-% end
-% 
-% % Pre-allocate BSFC storage for all cycles
-% BSFC_all = zeros(1, Ncycles); 
-% 
-% for i = 1:Ncycles
-%     % Extract the pressure and volume data for the current cycle (i)
-%     V_cycle = V(:, i);  % Volume for cycle i
-%     p_cycle = p(:, i);  % Pressure for cycle i
-%     
-%     % Calculate BSFC using the ComputeBSFC function
-%     BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, mfuel); % Pass pressure, volume, RPM, and fuel mass flow rate
-% end
-
 
 %% Load NASA maybe you need it at some point?
 % Global (for the Nasa database in case you wish to use it).
+
 global Runiv
 Runiv = 8.314;
-[SpS,El]        = myload('Nasa\NasaThermalDatabase.mat',{'Diesel','O2','N2','CO2','H2O'});
+[SpS,El] = myload('Nasa\NasaThermalDatabase.mat',{'Diesel','O2','N2','CO2','H2O'});
+
 %% Engine geom data (check if these are correct)
 Cyl.Bore                = 104*mm;
 Cyl.Stroke              = 85*mm;
 Cyl.CompressionRatio    = 21.5;
 Cyl.ConRod              = 136.5*mm;
 Cyl.TDCangle            = 180;
+
 % -- Valve closing events can sometimes be seen in fast oscillations in the pressure signal (due
 % to the impact when the Valve hits its seat).
-CaIVO = -355; %Intake valve opens
-CaIVC = -135; %Intake valve closes
-CaEVO = 149; %Exhaust valve opens
-CaEVC = -344; %Exhaust valve closes
-CaSOI = -3.2; %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXPERIMENT
+
+CaIVO = -355;  %Intake valve opens
+CaIVC = -135;  %Intake valve closes
+CaEVO = 149;   %Exhaust valve opens
+CaEVC = -344;  %Exhaust valve closes
+CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXPERIMENT
+
 % Write a function [V] = CylinderVolume(Ca,Cyl) that will give you Volume
 % for the given Cyl geometry. If you can do that you can create pV-diagrams
+
 %% Load data (if txt file)
 FullName        = fullfile('Data','ExampleDataSet.txt');
 dataIn          = table2array(readtable(FullName));
@@ -101,6 +71,33 @@ NdatapointsperCycle = 720/0.2;                     % Nrows is a multitude of Nda
 Ncycles         = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
 Ca              = reshape(dataIn(:,1),[],Ncycles); % Both p and Ca are now matrices of size (NCa,Ncycles)
 p               = reshape(dataIn(:,2),[],Ncycles)*bara; % type 'help reshape' in the command window if you want to know what it does (reshape is a Matlab buit-in command
+
+%% KPI function implementations
+
+% Pre-allocate BSFC storage for all cycles
+% BSFC_all = zeros(1, Ncycles);  % empty matrix to store values
+% V = zero(1, Ncycles);
+% p =zero(1, Ncycles);
+% mfuel = 
+
+% for i = 1:Ncycles
+%     % Extract the pressure and volume data for the current cycle (i)
+%     V_cycle = V(:, i);  % Volume for cycle i
+%     p_cycle = p(:, i);  % Pressure for cycle i
+% 
+%     % Calculate BSFC using the ComputeBSFC function
+%     BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, mfuel); % Pass pressure, volume, RPM, and fuel mass flow rate
+% end
+
+% Calculating Work
+ W = zeros(1, Ncycles);
+ V = CylinderVolume(Ca(:,iselect),Cyl);
+ 
+ W = ComputeW(p, V)
+
+
+
+
 %% Plotting 
 f1=figure(1);
 set(f1,'Position',[ 200 800 1200 400]);             % Just a size I like. Your choice
@@ -115,15 +112,17 @@ line([CaIVC CaIVC],YLIM,'LineWidth',1,'Color','b'); % Plot a vertical line at IV
 line([CaEVO CaEVO],YLIM,'LineWidth',1,'Color','r'); % Plot a vertical line at EVO. Just for reference not a particular reason.
 set(gca,'XTick',[-360:60:360],'XGrid','on','YGrid','on');        % I like specific axis labels. Matter of taste
 title('All cycles in one plot.')
+
 %% pV-diagram
+
 V = CylinderVolume(Ca(:,iselect),Cyl);
 f2 = figure(2);
 set(f2,'Position',[ 200 400 600 800]);              % Just a size I like. Your choice
 subplot(2,1,1)
 plot(V/dm^3,p(:,iselect)/bara);
-xlabel('V [dm^3]');ylabel('p [bar]');               % Always add axis labels
-xlim([0 0.8]);ylim([0.5 50]);                      % Matter of taste
-set(gca,'XTick',[0:0.1:0.8],'XGrid','on','YGrid','on');        % I like specific axis labels. Matter of taste
+xlabel('V [dm^3]');ylabel('p [bar]');                      % Always add axis labels
+xlim([0 0.8]);ylim([0.5 50]);                              % Matter of taste
+set(gca,'XTick',[0:0.1:0.8],'XGrid','on','YGrid','on');    % I like specific axis labels. Matter of taste
 title({'pV-diagram'})
 subplot(2,1,2)
 loglog(V/dm^3,p(:,iselect)/bara);
@@ -140,7 +139,8 @@ title({'pV-diagram'})
 gamma = 1.3;        % Ratio of specific heats, this is used for now
 
 %% Compute Volume and Derivatives
-V = CylinderVolume(Ca, Cyl); % Calculate volume at each crank angle
+
+V = CylinderVolume(Ca, Cyl);  % Calculate volume at each crank angle
 
 dVdCA = smoothdata(gradient(V, diff(Ca(1:2))), 'movmean', 5); % Approximation of dV/dCA
 

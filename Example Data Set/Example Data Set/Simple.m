@@ -122,8 +122,15 @@ end
 
 Efficiency_all = zeros(1, Ncycles); 
 
+for i = 1:Ncycles
+    V_cycle = V_matrix(:, i);  % Volume for cycle i
+    p_cycle = p_matrix(:, i);  % Pressure for cycle i
+    m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
 
 
+    Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, p_cycle, V_cycle, RPM)
+
+end
 
 %% Plotting 
 f1=figure(1);

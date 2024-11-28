@@ -69,8 +69,13 @@ dataIn              = table2array(readtable(FullName));
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
 NdatapointsperCycle = 720/0.2;                     % Nrows is a multitude of NdatapointsperCycle
 Ncycles             = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
-Ca_matrix                 = reshape(dataIn(:,1),NdatapointsperCycle,Ncycles); % Both p and Ca are now matrices of size (NCa,Ncycles)
-p_matrix                   = reshape(dataIn(:,2),NdatapointsperCycle,Ncycles)*bara; % type 'help reshape' in the command window if you want to know what it does (reshape is a Matlab buit-in command
+% Check the size of matricx matches
+disp(['Rows in dataIn: ', num2str(Nrows)]);
+disp(['Expected rows (NdatapointsperCycle * Ncycles): ', num2str(NdatapointsperCycle * Ncycles)]);
+
+Ca_matrix           = reshape(dataIn(:,1),NdatapointsperCycle,Ncycles); % Both p and Ca are now matrices of size (NCa,Ncycles)
+p_matrix            = reshape(dataIn(:,2),NdatapointsperCycle,Ncycles)*bara; % type 'help reshape' in the command window if you want to know what it does (reshape is a Matlab buit-in command
+m_fuel_matrix       = reshape(dataIn(:,3),NdatapointsperCycle,Ncycles);
 
 %% Work and Volume Calculation
 
@@ -100,20 +105,25 @@ grid on;
 
 %% KPI function implementations
 
-Pre-allocate BSFC storage for all cycles
+% BSFC calculation
 BSFC_all = zeros(1, Ncycles);  % empty matrix to store values
-V = zero(1, Ncycles);
-p =zero(1, Ncycles);
-mfuel = 10;
 
 for i = 1:Ncycles
     % Extract the pressure and volume data for the current cycle (i)
     V_cycle = V_matrix(:, i);  % Volume for cycle i
     p_cycle = p_matrix(:, i);  % Pressure for cycle i
+    m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
 
     % Calculate BSFC using the ComputeBSFC function
-    BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, mfuel); % Pass pressure, volume, RPM, and fuel mass flow rate
+    BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, m_fuel_cycle) % Pass pressure, volume, RPM, and fuel mass flow rate
 end
+
+% Efficiency calculation
+
+Efficiency_all = zeros(1, Ncycles); 
+
+
+
 
 %% Plotting 
 f1=figure(1);

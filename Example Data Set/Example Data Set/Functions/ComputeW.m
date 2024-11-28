@@ -1,4 +1,4 @@
-function [W] = ComputeW(p, V)
+function [W] = ComputeW(p_cycle, V_cycle)
     %Inputs:
     % p_cycle : pressure [Pa]
     % V_cycle : volume [m^3]
@@ -7,6 +7,6 @@ function [W] = ComputeW(p, V)
     % W : work [J]
     
     % Step 1: Calculate work from p-V Diagram
-    W = trapz(V,p,1);
+    W = trapz(V_cycle,p_cycle,1);
 
 end

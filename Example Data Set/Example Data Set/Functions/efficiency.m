@@ -13,7 +13,7 @@
 % e = W/Efuel;
 % end             
 
-function [e] = efficiency(m_fuel_cycle, selectedFuel, FuelTable, W_all)
+function [e] = efficiency(m_fuel_cycle, selectedFuel, FuelTable, V_cycle, p_cycle, RPM)
 
     %P =        load on engine
     %m_dot =    mass flow rate of the fuel 
@@ -21,8 +21,10 @@ function [e] = efficiency(m_fuel_cycle, selectedFuel, FuelTable, W_all)
 %Find lower heating value from table
 LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, selectedFuel));
 
+s = 120 / RPM; % 4-stroke: 2 revolutions per cycl
+Work = trapz(V_cycle,p_cycle,1); 
 
-Efuel = m_fuel_cycle*LHV;     %Energy content of the fuel  
+Efuel = m_fuel_cycle*s*LHV;     %Energy content of the fuel  
 
-e = W_all ./ Efuel;
+e = Work ./ Efuel;
 end

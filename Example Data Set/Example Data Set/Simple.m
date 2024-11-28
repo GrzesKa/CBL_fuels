@@ -131,7 +131,7 @@ for i = 1:Ncycles
     m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
 
 
-    Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, W_all);
+    Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, V_cycle, p_cycle, RPM);
 end
 
 disp('Efficiency for each cycle:');

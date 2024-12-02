@@ -103,50 +103,50 @@ title('p-V Diagram for Cycle 1');
 grid on;
 
 
-%% KPI function implementations
-
-% BSFC calculation
-BSFC_all = zeros(1, Ncycles);  % empty matrix to store values
-
-for i = 1:Ncycles
-    % Extract the pressure and volume data for the current cycle (i)
-    V_cycle = V_matrix(:, i);          % Volume for cycle i
-    p_cycle = p_matrix(:, i);          % Pressure for cycle i
-    m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
-
-    % Calculate BSFC using the ComputeBSFC function
-    BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, m_fuel_cycle); % Calculates the BSFC values per cycle and adds them to the empty matrix
-end
-
-disp('BSFC for each cycle:');
-disp(BSFC_all);
-
-% Efficiency calculation
-
-Efficiency_all = zeros(1, Ncycles); 
-
-for i = 1:Ncycles
-    V_cycle = V_matrix(:, i);           % Volume for cycle i
-    p_cycle = p_matrix(:, i);           % Pressure for cycle i
-    m_fuel_cycle = m_fuel_matrix(:,i);  % Mass fuel for cycle i
-
-
-    Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, V_cycle, p_cycle, RPM); %Calculates the efficiency per cycle and adds to the empty matrix 
-end
-
-disp('Efficiency for each cycle:');
-disp(Efficiency_all);
-
-%CO2 Emissions (incomplete)
-
-bsCO2_all = zeros(1, Ncycles);
-
-for i = 1:Ncycles
-    m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
-    bsCO2(i) = CO2Emissions(m_fuel_matrix, P, selectedFuel, Fueltable);
-end
-
-disp(bsCO2_all);
+% %% KPI function implementations
+% 
+% % BSFC calculation
+% BSFC_all = zeros(1, Ncycles);  % empty matrix to store values
+% 
+% for i = 1:Ncycles
+%     % Extract the pressure and volume data for the current cycle (i)
+%     V_cycle = V_matrix(:, i);          % Volume for cycle i
+%     p_cycle = p_matrix(:, i);          % Pressure for cycle i
+%     m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
+% 
+%     % Calculate BSFC using the ComputeBSFC function
+%     BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, m_fuel_cycle); % Calculates the BSFC values per cycle and adds them to the empty matrix
+% end
+% 
+% disp('BSFC for each cycle:');
+% disp(BSFC_all);
+% 
+% % Efficiency calculation
+% 
+% Efficiency_all = zeros(1, Ncycles); 
+% 
+% for i = 1:Ncycles
+%     V_cycle = V_matrix(:, i);           % Volume for cycle i
+%     p_cycle = p_matrix(:, i);           % Pressure for cycle i
+%     m_fuel_cycle = m_fuel_matrix(:,i);  % Mass fuel for cycle i
+% 
+% 
+%     Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, V_cycle, p_cycle, RPM); %Calculates the efficiency per cycle and adds to the empty matrix 
+% end
+% 
+% disp('Efficiency for each cycle:');
+% disp(Efficiency_all);
+% 
+% %CO2 Emissions (incomplete)
+% 
+% bsCO2_all = zeros(1, Ncycles);
+% 
+% for i = 1:Ncycles
+%     m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
+%     bsCO2(i) = CO2Emissions(m_fuel_matrix, P, selectedFuel, Fueltable);
+% end
+% 
+% disp(bsCO2_all);
 %% Plotting 
 f1=figure(1);
 set(f1,'Position',[ 200 800 1200 400]);             % Just a size I like. Your choice
@@ -164,7 +164,9 @@ title('All cycles in one plot.')
 
 %% pV-diagram
 
-V_matrix = CylinderVolume(Ca_matrix(:,iselect),Cyl);
+% Extract data for the selected cycle
+V_cycle = V_matrix(:, iselect);
+p_cycle = p_matrix(:, iselect);
 
 f2 = figure(2);
 set(f2,'Position',[ 200 400 600 800]);              % Just a size I like. Your choice
@@ -188,38 +190,90 @@ title({'pV-diagram'})
 %Cp = CpNasa(T, )
 %Cv = CvNasa(T, )
 
-gamma = 1.3;        % Ratio of specific heats, this is used for now
-
 %% Compute Volume and Derivatives
 
-%V = CylinderVolume(Ca, Cyl);  % Calculate volume at each crank angle
+% Define variables
+Ca = Ca_matrix;       % Use all crank angle data
+p = p_matrix;         % Use all pressure data
+V = V_matrix;         % Use all volume data
 
-dVdCA = smoothdata(gradient(V_matrix, diff(Ca_matrix(1:2))), 'movmean', 5); % Approximation of dV/dCA
+% Preallocate derivative matrices
+dVdCa = zeros(size(V));
+dpdCa = zeros(size(p));
 
-dpdCA = smoothdata(gradient(p_matrix, diff(Ca_matrix(1:2))), 'movmean', 5); % Approximation of dp/dCA
+% Compute derivatives for each cycle
+for i = 1:Ncycles
+    dVdCa(:, i) = gradient(V(:, i), Ca(:, i));
+    dpdCa(:, i) = gradient(p(:, i), Ca(:, i));
+end
 
+% Average over all cycles and apply filtering
+NCa = size(dVdCa, 1);  % number of unique crank angles
+
+% Initialize averaged variables
+filtered_averaged_dVdCa = zeros(NCa, 1); 
+filtered_averaged_dpdCa = zeros(NCa, 1); 
+filtered_averaged_p = zeros(NCa, 1);
+
+for i = 1:NCa
+    % dVdCa
+    angle_dVdCa = dVdCa(i, :);
+    sorted_dVdCa = sort(angle_dVdCa);
+    n = length(sorted_dVdCa);
+    lower_bound = ceil(n * 0.025);  
+    upper_bound = floor(n * 0.975); 
+    filtered_dVdCa = sorted_dVdCa(lower_bound:upper_bound);
+    filtered_averaged_dVdCa(i) = mean(filtered_dVdCa);
+    
+    % dpdCa
+    angle_dpdCa = dpdCa(i, :);
+    sorted_dpdCa = sort(angle_dpdCa);
+    filtered_dpdCa = sorted_dpdCa(lower_bound:upper_bound);
+    filtered_averaged_dpdCa(i) = mean(filtered_dpdCa);
+    
+    % Pressure
+    angle_p = p(i, :);
+    sorted_p = sort(angle_p);
+    filtered_p = sorted_p(lower_bound:upper_bound);
+    filtered_averaged_p(i) = mean(filtered_p);
+end
+
+% Smooth the filtered data
+smooth_dVdCa = sgolayfilt(filtered_averaged_dVdCa, 1, 9);
+smooth_dpdCa = sgolayfilt(filtered_averaged_dpdCa, 1, 9);
+smooth_p = sgolayfilt(filtered_averaged_p, 1, 9);
+
+% Use the average volume (since geometry doesn't change)
+V_avg = mean(V, 2); % Average over all cycles
 
 %% Compute aROHR
-aROHR = -(gamma / (gamma - 1)) * p_matrix .* dVdCA - (1 / (gamma - 1)) * V_matrix .* dpdCA;
+gamma = 1.2; % Update gamma if needed
 
+aROHR = (gamma / (gamma - 1)) * smooth_p .* smooth_dVdCa + (1 / (gamma - 1)) * V_avg .* smooth_dpdCa;
 
 %% Plot aROHR
 f3 = figure(3);
 set(f3, 'Position', [400 400 800 400]); % Figure size
-plot(Ca_matrix(:, iselect), aROHR(:, iselect), 'LineWidth', 1); % Plot for selected cycle
+plot(Ca(:, 1), aROHR, 'LineWidth', 1); % Plot averaged aROHR
 xlabel('Crank Angle (°)');
 ylabel('aROHR [J/°CA]');
 xlim([-45 135]);
-%ylim([-20 100])
 grid on;
 title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
 
-%% Find the Index for CaSOI
-[~, idx_start] = min(abs(Ca_matrix(:, iselect) - CaSOI)); % Find index closest to CaSOI
+%% Find the Indices for CaSOI and CaEVO
+Ca_single = Ca(:, 1); % Use the crank angle array (same for all cycles)
+[~, idx_start] = min(abs(Ca_single - CaSOI)); % Index closest to CaSOI
+[~, idx_end] = min(abs(Ca_single - CaEVO));   % Index closest to CaEVO
 
-% Slice data starting at CaSOI to the last data point
-Ca_from_start = Ca_matrix(idx_start:end, iselect); % Crank angle from CaSOI to the end
-aROHR_from_start = aROHR(idx_start:end, iselect); % aROHR from CaSOI to the end
+% Ensure that idx_end is after idx_start
+if idx_end <= idx_start
+    error('CaEVO must be after CaSOI in the data');
+end
+
+% Slice data from CaSOI to CaEVO
+Ca_from_start = Ca_single(idx_start:idx_end); % Crank angle from CaSOI to CaEVO
+aROHR_from_start = aROHR(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
 
 %% Perform Cumulative Integration
 aHR = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release
@@ -228,7 +282,6 @@ aHR = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release
 figure;
 plot(Ca_from_start, aHR, 'b', 'LineWidth', 2); % Plot cumulative heat release
 hold on;
-
 
 % Annotate 10%, 50%, and 90% heat release points
 [~, idx10] = min(abs(aHR - 0.1 * max(aHR)));
@@ -251,7 +304,7 @@ line([0 0], ylim, 'Color', 'k', 'LineStyle', '-', 'LineWidth', 1.5); % Vertical 
 xlabel('Crank Angle [deg]');
 ylabel('aHR [J]');
 title('Cumulative Heat Release (aHR) vs Crank Angle');
-xlim([-10 300]); % Adjust x-axis limits
-ylim([-100 5000]); % Adjust y-axis limits
+xlim([CaSOI - 10, CaEVO + 10]); % Adjust x-axis limits
+ylim([min(aHR) - 100, max(aHR) + 100]); % Adjust y-axis limits
 grid on;
 hold off;

@@ -304,7 +304,7 @@ line([0 0], ylim, 'Color', 'k', 'LineStyle', '-', 'LineWidth', 1.5); % Vertical 
 xlabel('Crank Angle [deg]');
 ylabel('aHR [J]');
 title('Cumulative Heat Release (aHR) vs Crank Angle');
-xlim([CaSOI - 10, CaEVO + 10]); % Adjust x-axis limits
+xlim([CaSOI - 10, 130]); % Adjust x-axis limits
 ylim([min(aHR) - 100, max(aHR) + 100]); % Adjust y-axis limits
 grid on;
 hold off;

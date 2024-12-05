@@ -403,6 +403,7 @@ DensityAir = 1.204;                         %kg/m3 density of air at atmospheric
 MassAirIntake = VIntakeClose * DensityAir;  %Mass of the air after intake valve closes
 mtot = MassAirIntake;
 Xair = [0 0.21 0.79 0 0];                   %Mol fraction of air
+Mi = [SpS.Mass];                             %Molair mass call from Nasa table
 MAir = Xair*Mi';                            %Molair mass of air 
 Yair = Xair.*Mi/MAir;                       %Mass fraction of air
 Xmix = Xair;
@@ -413,9 +414,8 @@ AF = 14.7;                                  %Air to fuel ratio
 mfuel = mtot/length(Ca_2to3)/AF;            %Averaged fuel injection per increment
 Elcompfuel = [SpS(1).Elcomp];               %Elemental composition of the fuel
 
-%function
+%(function) for loop
 %In: mfuel,mtot Ca, Xmix, Ymix,CaIVC, T, 
-
 %Out: Xmix, Ymix, gamma, temperature, QLHV
 
 
@@ -423,8 +423,9 @@ T = 800;
 
 %For loop that incrementally adds the fuel every .2 crank angle increments
 %and calculates the new composition, gamma value and temperature
+Gamma_at_angle = zeros(length(Ca_2to3), 2);
 for i=1:length(Ca_2to3)
-
+Gamma_at_angle(i,1) = Ca_2to3(i);
 %Current mol values in the cylinder
 nFueladd = mfuel / Mi(1);             % Mols of fuel
 nO2current = mtot * Ymix(2) / Mi(2);  % Mols of O2               
@@ -462,6 +463,7 @@ Cp = Ymix*Cpi';                 %Calculates the Cp of the fuel using each compon
 Cv = Ymix*Cvi';                 %Calculates the Cv of the fuel using each component Cvi
 Cpcheck = Cv + Rgmix;           %Checks if the  Cp value is consistent with the formula Cp = Cv + Rspecif
 Gamma = Cp/Cv;                  %Calculates gamma using Cp and Cv
+Gamma_at_angle(i,2) = Gamma;
 deltaT = LHV*mfuel/(Cp*mtot);   %Calculates
 T = T + deltaT;
 end
@@ -512,6 +514,7 @@ end
 Cp3 = Yair*Cp_T3'; % [J/(kg*K)]specific heat for constant pressure at temperature 3
 Cv3 = Yair*Cv_T3'; % [J/(kg*K)] specific heat for constant volume at temperature 3
 gamma_T3 = Cp3/Cv3; % gamma from specific heat at temperature 3
+
 T4 = T3*(V2/V1)^(gamma_T3-1);
 
 T1 %outputs temperatures in command window

@@ -470,6 +470,12 @@ end
 
 %% Engine cycle
 
+Vmin = min(V_cycle(:));
+B   = Cyl.Bore;
+S   = Cyl.Stroke;
+Vdiff = pi / 4 * B^2 * S; % Displacement volume
+NSpS = length(SpS);
+Pamb = 101325; % pressure in Pa
 V1 = Vmin + Vdiff; % [m^3] the volume of the cylinder at BDC
 V2 = Vmin; %[m^3] the volume of the cylinder at TDC
 T1 = 293; %  assumption room temperature
@@ -504,7 +510,7 @@ for i=1:NSpS
     
 end
 Cp2 = Ymix*Cp_T2'; % [J/(kg*K)]specific heat for constant pressure at temperature 1
-Qin = m_fuel*Diesel; % [J] heat into the system step 2 to 3
+Qin = m_fuel*LHV; % [J] heat into the system step 2 to 3
 T3 = Qin/(Cp2.*(m_fuel+mass_air)) + T2; % 
 V3 = V2*T3/T2; % using ideal gas law
 for i=1:NSpS
@@ -514,7 +520,6 @@ end
 Cp3 = Yair*Cp_T3'; % [J/(kg*K)]specific heat for constant pressure at temperature 3
 Cv3 = Yair*Cv_T3'; % [J/(kg*K)] specific heat for constant volume at temperature 3
 gamma_T3 = Cp3/Cv3; % gamma from specific heat at temperature 3
-
 T4 = T3*(V2/V1)^(gamma_T3-1);
 
 T1 %outputs temperatures in command window

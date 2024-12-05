@@ -219,7 +219,7 @@ DensityAir = 1.204;                         %kg/m3 density of air at atmospheric
 MassAirIntake = VIntakeClose * DensityAir;  %Mass of the air after intake valve closes
 mtot = MassAirIntake;
 Xair = [0 0.21 0.79 0 0];                   %Mol fraction of air
-Mi = [SpS.Mass];                             %Molair mass call from Nasa table
+Mi = [SpS.Mass];                            %Molair mass call from Nasa table
 MAir = Xair*Mi';                            %Molair mass of air 
 Yair = Xair.*Mi/MAir;                       %Mass fraction of air
 Xmix = Xair;
@@ -239,9 +239,9 @@ T = 800;
 
 %For loop that incrementally adds the fuel every .2 crank angle increments
 %and calculates the new composition, gamma value and temperature
-Gamma_at_angle = zeros(length(Ca_2to3), 2);
+Gamma_at_angle = zeros(length(Ca_2to3), 2); %Initiates matrix of length(Ca_2to3 by 2
 for i=1:length(Ca_2to3)
-Gamma_at_angle(i,1) = Ca_2to3(i);
+Gamma_at_angle(i,1) = Ca_2to3(i);           %Appends each crank angle to the matrix
 %Current mol values in the cylinder
 nFueladd = mfuel / Mi(1);             % Mols of fuel
 nO2current = mtot * Ymix(2) / Mi(2);  % Mols of O2               
@@ -279,7 +279,7 @@ Cp = Ymix*Cpi';                 %Calculates the Cp of the fuel using each compon
 Cv = Ymix*Cvi';                 %Calculates the Cv of the fuel using each component Cvi
 Cpcheck = Cv + Rgmix;           %Checks if the  Cp value is consistent with the formula Cp = Cv + Rspecif
 Gamma = Cp/Cv;                  %Calculates gamma using Cp and Cv
-Gamma_at_angle(i,2) = Gamma;
+Gamma_at_angle(i,2) = Gamma;    %Appends the gamma value in the second column
 deltaT = LHV*mfuel/(Cp*mtot);   %Calculates
 T = T + deltaT;
 end

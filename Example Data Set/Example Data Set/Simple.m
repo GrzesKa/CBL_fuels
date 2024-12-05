@@ -500,6 +500,15 @@ end
 
 %% Engine cycle
 
+%variable definitions 
+Vmin = min(V_cycle(:)); %Find the smallest value from the Volume matrix
+B   = Cyl.Bore; %Defined in the CylinderVolume function
+S   = Cyl.Stroke; %Defined in the CylinderVolume function
+Vdiff = pi / 4 * B^2 * S; % Displacement volume
+NSpS = length(SpS); %calculates the length of the SpS matrix
+Pamb = 101325; % pressure in Pa
+
+%The function itself
 Vmin = min(V_cycle(:));
 B   = Cyl.Bore;
 S   = Cyl.Stroke;

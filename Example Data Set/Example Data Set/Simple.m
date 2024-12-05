@@ -212,6 +212,78 @@ title({'pV-diagram'})
 %Cp = CpNasa(T, )
 %Cv = CvNasa(T, )
 
+%% Incremental temp
+
+VIntakeClose = CylinderVolume(CaIVC,Cyl);   %Volume of cylinder after intake valve closes
+DensityAir = 1.204;                         %kg/m3 density of air at atmospheric pressure
+MassAirIntake = VIntakeClose * DensityAir;  %Mass of the air after intake valve closes
+mtot = MassAirIntake;
+Xair = [0 0.21 0.79 0 0];                   %Mol fraction of air
+Mi = [SpS.Mass];                             %Molair mass call from Nasa table
+MAir = Xair*Mi';                            %Molair mass of air 
+Yair = Xair.*Mi/MAir;                       %Mass fraction of air
+Xmix = Xair;
+Ymix = Yair;
+LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, 'Diesel'));  %LHV of the fuel
+Ca_2to3 = -3.2:0.2:149;                     %crank angle injection angle to exhaust valve opening
+AF = 14.7;                                  %Air to fuel ratio
+mfuel = mtot/length(Ca_2to3)/AF;            %Averaged fuel injection per increment
+Elcompfuel = [SpS(1).Elcomp];               %Elemental composition of the fuel
+
+%(function) for loop
+%In: mfuel,mtot Ca, Xmix, Ymix,CaIVC, T, 
+%Out: Xmix, Ymix, gamma, temperature, QLHV
+
+
+T = 800;
+
+%For loop that incrementally adds the fuel every .2 crank angle increments
+%and calculates the new composition, gamma value and temperature
+Gamma_at_angle = zeros(length(Ca_2to3), 2);
+for i=1:length(Ca_2to3)
+Gamma_at_angle(i,1) = Ca_2to3(i);
+%Current mol values in the cylinder
+nFueladd = mfuel / Mi(1);             % Mols of fuel
+nO2current = mtot * Ymix(2) / Mi(2);  % Mols of O2               
+nN2current = mtot * Ymix(3) / Mi(3);  % Mols of N2 (remains unchanged)
+nCO2current = mtot * Ymix(4) / Mi(4); % Mols of CO2
+nH2Ocurrent = mtot * Ymix(5) / Mi(5); % Mols of H2O
+nTotalCurrent = nFueladd + nO2current + nN2current + nCO2current + nH2Ocurrent;
+mtot = mtot + mfuel;                  %Total mass in the cylinder
+
+%Mol going out                                    
+nO2new = nO2current - (Elcompfuel(3)+Elcompfuel(2)/4)*nFueladd;    % new Mols of O2   
+nN2new = nN2current;                                               % new Mols of N2 (remains unchanged)
+nCO2new = nCO2current + nFueladd * Elcompfuel(3);                  % new Mols of CO2
+nH2Onew = nH2Ocurrent + nFueladd * Elcompfuel(2)/2;                % new Mols of H2O
+nNew = nO2new + nN2new + nCO2new + nH2Onew;                        
+
+
+%Molar mass fractions of the products
+Xmix(1) = 0;
+Xmix(2) = nO2new/nNew;
+Xmix(3) = nN2new/nNew;
+Xmix(4) = nCO2new/nNew;
+Xmix(5) = nH2Onew/nNew;
+
+Mmix = Xmix * Mi';         % Mean molar mass of the mixture
+Ymix = Xmix .* Mi / Mmix;  % Mass fractions of products
+Rgmix = Runiv / Mmix;      % Specific gas constant of the mixture
+
+%For loop calculates the Cp and Cv values for each element in the Array
+    for j=1:5                                                                                       
+        Cpi(:,j) = CpNasa(T,SpS(j));
+        Cvi(:,j) = CvNasa(T,SpS(j)); 
+    end
+Cp = Ymix*Cpi';                 %Calculates the Cp of the fuel using each component Cpi
+Cv = Ymix*Cvi';                 %Calculates the Cv of the fuel using each component Cvi
+Cpcheck = Cv + Rgmix;           %Checks if the  Cp value is consistent with the formula Cp = Cv + Rspecif
+Gamma = Cp/Cv;                  %Calculates gamma using Cp and Cv
+Gamma_at_angle(i,2) = Gamma;
+deltaT = LHV*mfuel/(Cp*mtot);   %Calculates
+T = T + deltaT;
+end
+
 %% Compute Volume and Derivatives
 
 % Define variables
@@ -269,9 +341,27 @@ smooth_p = sgolayfilt(filtered_averaged_p, 1, 9);
 V_avg = mean(V, 2); % Average over all cycles
 
 %% Compute aROHR
-gamma = 1.2; % Update gamma if needed
+%gamma = 1.2; % Update gamma if needed
 
-aROHR = (gamma / (gamma - 1)) * smooth_p .* smooth_dVdCa + (1 / (gamma - 1)) * V_avg .* smooth_dpdCa;
+%aROHR = (gamma / (gamma - 1)) * smooth_p .* smooth_dVdCa + (1 / (gamma - 1)) * V_avg .* smooth_dpdCa;
+
+%% Plot aROHR
+%f3 = figure(3);
+%set(f3, 'Position', [400 400 800 400]); % Figure size
+%plot(Ca(:, 1), aROHR, 'LineWidth', 1); % Plot averaged aROHR
+%xlabel('Crank Angle (°)');
+%ylabel('aROHR [J/°CA]');
+%xlim([-45 135]);
+%grid on;
+%title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
+
+
+% Interpolate gamma for the given crank angles in Ca(:, 1)
+gamma_interp = interp1(Gamma_at_angle(:, 1), Gamma_at_angle(:, 2), Ca(:, 1), 'linear', 'extrap');
+
+% Compute aROHR using the interpolated gamma
+aROHR = (gamma_interp ./ (gamma_interp - 1)) .* smooth_p .* smooth_dVdCa + ...
+        (1 ./ (gamma_interp - 1)) .* V_avg .* smooth_dpdCa;
 
 %% Plot aROHR
 f3 = figure(3);
@@ -396,77 +486,7 @@ disp(['BSFC_all:', num2str(BSFC_all), 'g/kWhr']);
 
 end
 
-%% Incremental temp
 
-VIntakeClose = CylinderVolume(CaIVC,Cyl);   %Volume of cylinder after intake valve closes
-DensityAir = 1.204;                         %kg/m3 density of air at atmospheric pressure
-MassAirIntake = VIntakeClose * DensityAir;  %Mass of the air after intake valve closes
-mtot = MassAirIntake;
-Xair = [0 0.21 0.79 0 0];                   %Mol fraction of air
-Mi = [SpS.Mass];                             %Molair mass call from Nasa table
-MAir = Xair*Mi';                            %Molair mass of air 
-Yair = Xair.*Mi/MAir;                       %Mass fraction of air
-Xmix = Xair;
-Ymix = Yair;
-LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, 'Diesel'));  %LHV of the fuel
-Ca_2to3 = -3.2:0.2:149;                     %crank angle injection angle to exhaust valve opening
-AF = 14.7;                                  %Air to fuel ratio
-mfuel = mtot/length(Ca_2to3)/AF;            %Averaged fuel injection per increment
-Elcompfuel = [SpS(1).Elcomp];               %Elemental composition of the fuel
-
-%(function) for loop
-%In: mfuel,mtot Ca, Xmix, Ymix,CaIVC, T, 
-%Out: Xmix, Ymix, gamma, temperature, QLHV
-
-
-T = 800;
-
-%For loop that incrementally adds the fuel every .2 crank angle increments
-%and calculates the new composition, gamma value and temperature
-Gamma_at_angle = zeros(length(Ca_2to3), 2);
-for i=1:length(Ca_2to3)
-Gamma_at_angle(i,1) = Ca_2to3(i);
-%Current mol values in the cylinder
-nFueladd = mfuel / Mi(1);             % Mols of fuel
-nO2current = mtot * Ymix(2) / Mi(2);  % Mols of O2               
-nN2current = mtot * Ymix(3) / Mi(3);  % Mols of N2 (remains unchanged)
-nCO2current = mtot * Ymix(4) / Mi(4); % Mols of CO2
-nH2Ocurrent = mtot * Ymix(5) / Mi(5); % Mols of H2O
-nTotalCurrent = nFueladd + nO2current + nN2current + nCO2current + nH2Ocurrent;
-mtot = mtot + mfuel;                  %Total mass in the cylinder
-
-%Mol going out                                    
-nO2new = nO2current - (Elcompfuel(3)+Elcompfuel(2)/4)*nFueladd;    % new Mols of O2   
-nN2new = nN2current;                                               % new Mols of N2 (remains unchanged)
-nCO2new = nCO2current + nFueladd * Elcompfuel(3);                  % new Mols of CO2
-nH2Onew = nH2Ocurrent + nFueladd * Elcompfuel(2)/2;                % new Mols of H2O
-nNew = nO2new + nN2new + nCO2new + nH2Onew;                        
-
-
-%Molar mass fractions of the products
-Xmix(1) = 0;
-Xmix(2) = nO2new/nNew;
-Xmix(3) = nN2new/nNew;
-Xmix(4) = nCO2new/nNew;
-Xmix(5) = nH2Onew/nNew;
-
-Mmix = Xmix * Mi';         % Mean molar mass of the mixture
-Ymix = Xmix .* Mi / Mmix;  % Mass fractions of products
-Rgmix = Runiv / Mmix;      % Specific gas constant of the mixture
-
-%For loop calculates the Cp and Cv values for each element in the Array
-    for j=1:5                                                                                       
-        Cpi(:,j) = CpNasa(T,SpS(j));
-        Cvi(:,j) = CvNasa(T,SpS(j)); 
-    end
-Cp = Ymix*Cpi';                 %Calculates the Cp of the fuel using each component Cpi
-Cv = Ymix*Cvi';                 %Calculates the Cv of the fuel using each component Cvi
-Cpcheck = Cv + Rgmix;           %Checks if the  Cp value is consistent with the formula Cp = Cv + Rspecif
-Gamma = Cp/Cv;                  %Calculates gamma using Cp and Cv
-Gamma_at_angle(i,2) = Gamma;
-deltaT = LHV*mfuel/(Cp*mtot);   %Calculates
-T = T + deltaT;
-end
 
 %% Engine cycle
 

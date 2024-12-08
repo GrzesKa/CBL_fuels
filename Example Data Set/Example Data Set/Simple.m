@@ -4,7 +4,7 @@
 % Resolutie van 0.2º CA
 % Data voor 69 cycles (maximale van de Smetec, de OGO gensets kunnen in principe “onbeperkt” aan)
 % 
-%% init
+
 clear all; clc;close all;
 addpath( "Functions","Nasa");
 %% Units
@@ -63,12 +63,37 @@ CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXP
 % Write a function [V] = CylinderVolume(Ca,Cyl) that will give you Volume
 % for the given Cyl geometry. If you can do that you can create pV-diagrams
 
-%% Load data (of txt file)
-FullName            = fullfile('Data','ExampleDataSet.txt');
-dataIn              = table2array(readtable(FullName));
+% %% Load data (of txt file)
+% 
+% % Example Data
+% FullName            = fullfile('Data','ExampleDataSet.txt');
+% dataIn              = table2array(readtable(FullName));
+% [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
+% NdatapointsperCycle = 720/0.2;                         % Nrows is a multitude of NdatapointsperCycle
+% Ncycles             = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
+% % Check the size of matrix matches
+% disp(['Rows in dataIn: ', num2str(Nrows)]);
+% disp(['Expected rows (NdatapointsperCycle * Ncycles): ', num2str(NdatapointsperCycle * Ncycles)]);
+% 
+% Ca_matrix           = reshape(dataIn(:,1),NdatapointsperCycle,Ncycles);      % Both p and Ca are now matrices of size (NCa,Ncycles)
+% p_matrix            = reshape(dataIn(:,2),NdatapointsperCycle,Ncycles)*bara; % This forms the Matrix For the p values for each Ca per cycle and converts the pressure to SI units 
+% m_fuel_matrix       = reshape(dataIn(:,3),NdatapointsperCycle,Ncycles);      % Same thing as for pressure, but without the bara function
+
+%%% Experimental data
+%% Preallocate results structure
+numDatasets = 4;
+results = struct ( 'Work', [], 'BSFC', [], 'Efficiency', [], 'aROHR', [], 'CumulativeHR', []) ;
+
+%% Loop through each dataset
+for datasetIndex = 1:numDatasets
+    % Load dataset
+    FullName = fullfile('Data/EXP1/4bar', sprintf('P4dataset%d.txt', datasetIndex)); % Adjust file naming as needed
+    dataIn = table2array(readtable(FullName));
+end
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
 NdatapointsperCycle = 720/0.2;                         % Nrows is a multitude of NdatapointsperCycle
 Ncycles             = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
+
 % Check the size of matrix matches
 disp(['Rows in dataIn: ', num2str(Nrows)]);
 disp(['Expected rows (NdatapointsperCycle * Ncycles): ', num2str(NdatapointsperCycle * Ncycles)]);
@@ -95,8 +120,6 @@ W_cumm = sum(W_all); %Cummulative function of the Work
 m_fuel_cumm = sum(m_fuel_cycle);
 m_per_cycle = m_fuel_cumm/Ncycles;
 W_per_cycle = W_cumm/Ncycles; %Average work
-
-
 
 
 % Display or save results
@@ -374,14 +397,31 @@ aROHR = (gamma_full ./ (gamma_full - 1)) .* smooth_p .* smooth_dVdCa + ...
         (1 ./ (gamma_full - 1)) .* V_avg .* smooth_dpdCa;
 
 %% Plot aROHR
+% f3 = figure(3);
+% set(f3, 'Position', [400 400 800 400]); % Figure size
+% plot(Ca(:, 1), aROHR, 'LineWidth', 1); % Plot averaged aROHR
+% xlabel('Crank Angle (°)');
+% ylabel('aROHR [J/°CA]');
+% xlim([-45 135]);
+% grid on;
+% title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
+% Plot aROHR for all datasets
+
 f3 = figure(3);
-set(f3, 'Position', [400 400 800 400]); % Figure size
-plot(Ca(:, 1), aROHR, 'LineWidth', 1); % Plot averaged aROHR
+hold on; % Hold on to plot all datasets on the same figure
+for datasetIndex = 1:numDatasets
+    Ca_single = Ca_matrix(:, 1); % Use the crank angle array (same for all cycles)
+    plot(Ca_single, aROHR_all{datasetIndex}(:, 1), 'DisplayName', sprintf('Dataset %d', datasetIndex)); % Plot aROHR for the first cycle
+end
 xlabel('Crank Angle (°)');
 ylabel('aROHR [J/°CA]');
 xlim([-45 135]);
 grid on;
 title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
+legend show; % Show legend to differentiate datasets
+hold off;
+
+
 
 %% Find the Indices for CaSOI and CaEVO
 Ca_single = Ca(:, 1); % Use the crank angle array (same for all cycles)

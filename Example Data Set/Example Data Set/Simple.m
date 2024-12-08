@@ -307,6 +307,9 @@ deltaT = LHV*mfuel/(Cp*mtot);   %Calculates
 T = T + deltaT;
 end
 
+disp('gamma at angle');
+disp(size(Gamma_at_angle));
+disp(Gamma_at_angle);
 %% Compute Volume and Derivatives
 
 % Define variables
@@ -373,28 +376,52 @@ V_avg = mean(V, 2); % Average over all cycles
 %grid on;
 %title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
 
+ % Interpolate gamma for the given crank angles in Ca(:, 1)
 
-% Interpolate gamma for the given crank angles in Ca(:, 1)
+    gamma_start = Gamma_at_angle(1, 2);  % First gamma value
+    gamma_end = Gamma_at_angle(end, 2); % Last gamma value
 
-gamma_start = Gamma_at_angle(1, 2);  % First gamma value
-gamma_end = Gamma_at_angle(end, 2); % Last gamma value
+    gamma_full = zeros(size(Ca(:, 1)));  % Initialize the output array
 
-gamma_full = zeros(size(Ca(:, 1)));  % Initialize the output array
+    % Crank angles less than the first
+    gamma_full(Ca(:, 1) < Gamma_at_angle(1, 1)) = gamma_start;
 
-% Crank angles less than the first
-gamma_full(Ca(:, 1) < Gamma_at_angle(1, 1)) = gamma_start;
+    % Crank angles greater than the last
+    gamma_full(Ca(:, 1) > Gamma_at_angle(end, 1)) = gamma_end;
 
-% Crank angles greater than the last
-gamma_full(Ca(:, 1) > Gamma_at_angle(end, 1)) = gamma_end;
+    % Crank angles within the range
+    in_range = (Ca(:, 1) >= Gamma_at_angle(1, 1)) & (Ca(:, 1) <= Gamma_at_angle(end, 1));
+    gamma_full(in_range) = interp1(Gamma_at_angle(:, 1), Gamma_at_angle(:, 2), Ca(in_range, 1), 'linear');
 
-% Crank angles within the range
-in_range = (Ca(:, 1) >= Gamma_at_angle(1, 1)) & (Ca(:, 1) <= Gamma_at_angle(end, 1));
-gamma_full(in_range) = interp1(Gamma_at_angle(:, 1), Gamma_at_angle(:, 2), Ca(in_range, 1), 'linear');
+% % Initialize aROHR_all
+% aROHR_all = zeros(length(Ca(:, 1)), numDatasets); % Preallocate for speed, assuming numDatasets is defined
+% 
+% % Initialize aROHR_all
+% aROHR_all = zeros(length(gamma_full), numDatasets); % Preallocate for speed, assuming numDatasets is defined
+aROHR_all = zeros(1, length(gamma_full));
+for i = 1:length(gamma_full)
+    gammaidk = gamma_full(i);
+    smoothpidk = smooth_p(i);
+    Vavgidk = V_avg(i);
+    smoothdpdCaidk = smooth_dpdCa(i);
+    smoothdVdCaidk = smooth_dVdCa(i);
+    % Compute aROHR using the interpolated gamma and inputs
+    aROHR_all(i) = (gammaidk ./ (gammaidk - 1)) .* smoothpidk .* smoothdVdCaidk + (1 ./ (gammaidk - 1)) .* Vavgidk .* smoothdpdCaidk;
 
+    % Store in aROHR_all
+    %aROHR_all(:, datasetIndex) = aROHR; % Each column corresponds to a dataset
+end
 
-% Compute aROHR using the interpolated gamma
-aROHR = (gamma_full ./ (gamma_full - 1)) .* smooth_p .* smooth_dVdCa + ...
-        (1 ./ (gamma_full - 1)) .* V_avg .* smooth_dpdCa;
+disp('gamma full');
+disp(size(gamma_full))
+disp('dpdCa');
+disp(size(smooth_dpdCa));
+disp('p');
+disp(size(smooth_p));
+disp('dVdCA');
+disp(size(smooth_dVdCa));
+disp('Vavg');
+disp(size(V_avg));
 
 %% Plot aROHR
 % f3 = figure(3);
@@ -407,12 +434,37 @@ aROHR = (gamma_full ./ (gamma_full - 1)) .* smooth_p .* smooth_dVdCa + ...
 % title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
 % Plot aROHR for all datasets
 
+disp('aROHR size is');
+disp(size(aROHR_all));
+% if datasetIndex > size(aROHR_all, 1)
+%     error('datasetIndex exceeds the size of the first dimension of aROHR_all.');
+% end
+%% Find the Indices for CaSOI and CaEVO
+Ca_single = Ca(:, 1); % Use the crank angle array (same for all cycles)
+[~, idx_start] = min(abs(Ca_single - CaSOI)); % Index closest to CaSOI
+[~, idx_end] = min(abs(Ca_single - CaEVO));   % Index closest to CaEVO
+
+% Ensure that idx_end is after idx_start
+if idx_end <= idx_start
+    error('CaEVO must be after CaSOI in the data');
+end
+
+% Slice data from CaSOI to CaEVO
+Ca_from_start = Ca_single(idx_start:idx_end); % Crank angle from CaSOI to CaEVO
+aROHR_from_start = aROHR_all(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
 f3 = figure(3);
 hold on; % Hold on to plot all datasets on the same figure
 for datasetIndex = 1:numDatasets
-    Ca_single = Ca_matrix(:, 1); % Use the crank angle array (same for all cycles)
-    plot(Ca_single, aROHR_all{datasetIndex}(:, 1), 'DisplayName', sprintf('Dataset %d', datasetIndex)); % Plot aROHR for the first cycle
+    plot(Ca_single, aROHR_all(1, :), 'DisplayName', 'Dataset 1');
+    plot(Ca_single, aROHR_all(1, :), 'DisplayName', sprintf('Dataset %d', datasetIndex));
 end
+disp('Ca size is');
+disp(size(Ca_single)); 
+disp('aROHR size is');
+disp(size(aROHR_all));
+disp('Gamma size is');
+disp(size(Gamma_at_angle));
+
 xlabel('Crank Angle (°)');
 ylabel('aROHR [J/°CA]');
 xlim([-45 135]);
@@ -435,7 +487,7 @@ end
 
 % Slice data from CaSOI to CaEVO
 Ca_from_start = Ca_single(idx_start:idx_end); % Crank angle from CaSOI to CaEVO
-aROHR_from_start = aROHR(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
+aROHR_from_start = aROHR_all(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
 
 %% Perform Cumulative Integration
 aHR = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release

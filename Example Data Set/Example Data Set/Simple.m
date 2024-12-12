@@ -119,6 +119,23 @@ injections(KPI_index_injection) = T*2;
 end
 end
 
+%Mass flow
+intake_pressure = 100000; %Pa ambient pressure 1 bar
+intake_temp = 293.15; %Kelvin ambient temperature
+spec_gasct_air = 287; %J/mol*K
+volume_displaced_cycle = (pi/4) * Cyl.Bore\mm * Cyl.Stroke\mm;
+volumetric_flow = volume_displaced_cycle * 0.5 * (RPM/60);
+density_air = intake_pressure/(intake_temp*spec_gasct_air);
+mass_flow_air = volumetric_flow * density_air;
+
+Densityrow = strcmp(FuelTable.Fuel, selectedFuel);
+densityfuel = FuelTable.Density(Densityrow);
+m_air = (V_cycle-(m_fuel_cycle/densityfuel))*density_air;
+AFR = m_air/m_fuel_cycle;
+
+mass_flow_fuel = mass_flow_air./AFR; %air to fuel ratio
+mass_flow_fuel_cycle = mass_flow_fuel/12.5;
+
 
 % Display or save results
 disp('Work per cycle:');

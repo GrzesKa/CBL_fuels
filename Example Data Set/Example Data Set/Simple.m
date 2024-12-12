@@ -60,26 +60,7 @@ CaEVO = 149;   %Exhaust valve opens
 CaEVC = -344;  %Exhaust valve closes
 CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXPERIMENT
 
-% Write a function [V] = CylinderVolume(Ca,Cyl) that will give you Volume
-% for the given Cyl geometry. If you can do that you can create pV-diagrams
 
-% %% Load data (of txt file)
-% 
-% % Example Data
-% FullName            = fullfile('Data','ExampleDataSet.txt');
-% dataIn              = table2array(readtable(FullName));
-% [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
-% NdatapointsperCycle = 720/0.2;                         % Nrows is a multitude of NdatapointsperCycle
-% Ncycles             = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
-% % Check the size of matrix matches
-% disp(['Rows in dataIn: ', num2str(Nrows)]);
-% disp(['Expected rows (NdatapointsperCycle * Ncycles): ', num2str(NdatapointsperCycle * Ncycles)]);
-% 
-% Ca_matrix           = reshape(dataIn(:,1),NdatapointsperCycle,Ncycles);      % Both p and Ca are now matrices of size (NCa,Ncycles)
-% p_matrix            = reshape(dataIn(:,2),NdatapointsperCycle,Ncycles)*bara; % This forms the Matrix For the p values for each Ca per cycle and converts the pressure to SI units 
-% m_fuel_matrix       = reshape(dataIn(:,3),NdatapointsperCycle,Ncycles);      % Same thing as for pressure, but without the bara function
-
-%%% Experimental data
 %% Preallocate results structure
 numDatasets = 4;
 results = struct ( 'Work', [], 'BSFC', [], 'Efficiency', [], 'aROHR', [], 'CumulativeHR', []) ;
@@ -140,52 +121,6 @@ ylabel('Pressure [Pa]');
 title('p-V Diagram for Cycle 1');
 grid on;
 
-
-% %% KPI function implementations
-% 
-% % BSFC calculation
-% BSFC_all = zeros(1, Ncycles);  % empty matrix to store values
-% 
-% for i = 1:Ncycles
-%     % Extract the pressure and volume data for the current cycle (i)
-%     V_cycle = V_matrix(:, i);          % Volume for cycle i
-%     p_cycle = p_matrix(:, i);          % Pressure for cycle i
-%     m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
-%     
-%     % Calculate BSFC using the ComputeBSFC function
-%     BSFC_all(i) = ComputeBSFC(p_cycle, V_cycle, RPM, m_fuel_cycle); % Calculates the BSFC values per cycle and adds them to the empty matrix
-% end
-% 
-% disp('BSFC for each cycle:');
-% disp(BSFC_all);
-% 
-% % Efficiency calculation
-% 
-% Efficiency_all = zeros(1, Ncycles); 
-% 
-% for i = 1:Ncycles
-%     V_cycle = V_matrix(:, i);           % Volume for cycle i
-%     p_cycle = p_matrix(:, i);           % Pressure for cycle i
-%     m_fuel_cycle = m_fuel_matrix(:,i);  % Mass fuel for cycle i
-% 
-% 
-%     Efficiency_all(i) = efficiency(m_fuel_cycle, selectedFuel, FuelTable, V_cycle, p_cycle, RPM); %Calculates the efficiency per cycle and adds to the empty matrix 
-% end
-% 
-% disp('Efficiency for each cycle:');
-% disp(Efficiency_all);
-% 
-% %CO2 Emissions (incomplete)
-% 
-% bsCO2_all = zeros(1, Ncycles);
-% 
-% for i = 1:Ncycles
-%     m_fuel_cycle = m_fuel_matrix(:,i); % Mass fuel for cycle i
-%     bsCO2(i) = CO2Emissions(m_fuel_matrix, P, selectedFuel, Fueltable);
-% end
-% 
-% disp(bsCO2_all);
-
 LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, selectedFuel));
 disp('LHV ::');
 disp(LHV);
@@ -230,10 +165,6 @@ xlim([0.02 0.8]);ylim([0 50]);                      % Matter of taste
 set(gca,'XTick',[0.02 0.05 0.1 0.2 0.5 0.8],...
     'YTick',[0.5 1 2 5 10 20 50],'XGrid','on','YGrid','on');        % I like specific axis labels. Matter of taste
 title({'pV-diagram'})
-
-%% Constants
-%Cp = CpNasa(T, )
-%Cv = CvNasa(T, )
 
 %% Incremental temp
 
@@ -307,9 +238,11 @@ deltaT = LHV*mfuel/(Cp*mtot);   %Calculates
 T = T + deltaT;
 end
 
-disp('gamma at angle');
-disp(size(Gamma_at_angle));
-disp(Gamma_at_angle);
+%emissions
+CO2_endmass = Ymix(4)*mtot;
+disp('CO2 endmass in grams');
+disp(CO2_endmass*1000);
+
 %% Compute Volume and Derivatives
 
 % Define variables
@@ -367,14 +300,6 @@ smooth_p = sgolayfilt(filtered_averaged_p, 1, 9);
 V_avg = mean(V, 2); % Average over all cycles
 
 %% Plot aROHR
-%f3 = figure(3);
-%set(f3, 'Position', [400 400 800 400]); % Figure size
-%plot(Ca(:, 1), aROHR, 'LineWidth', 1); % Plot averaged aROHR
-%xlabel('Crank Angle (°)');
-%ylabel('aROHR [J/°CA]');
-%xlim([-45 135]);
-%grid on;
-%title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
 
  % Interpolate gamma for the given crank angles in Ca(:, 1)
 
@@ -394,11 +319,8 @@ V_avg = mean(V, 2); % Average over all cycles
     gamma_full(in_range) = interp1(Gamma_at_angle(:, 1), Gamma_at_angle(:, 2), Ca(in_range, 1), 'linear');
 
 % % Initialize aROHR_all
-% aROHR_all = zeros(length(Ca(:, 1)), numDatasets); % Preallocate for speed, assuming numDatasets is defined
-% 
-% % Initialize aROHR_all
-% aROHR_all = zeros(length(gamma_full), numDatasets); % Preallocate for speed, assuming numDatasets is defined
-aROHR_all = zeros(1, length(gamma_full));
+
+aROHR_all = zeros(1, length(gamma_full)); % Preallocate for speed, assuming numDatasets is defined
 for i = 1:length(gamma_full)
     gammaidk = gamma_full(i);
     smoothpidk = smooth_p(i);
@@ -408,37 +330,14 @@ for i = 1:length(gamma_full)
     % Compute aROHR using the interpolated gamma and inputs
     aROHR_all(i) = (gammaidk ./ (gammaidk - 1)) .* smoothpidk .* smoothdVdCaidk + (1 ./ (gammaidk - 1)) .* Vavgidk .* smoothdpdCaidk;
 
-    % Store in aROHR_all
-    %aROHR_all(:, datasetIndex) = aROHR; % Each column corresponds to a dataset
 end
 
-disp('gamma full');
-disp(size(gamma_full))
-disp('dpdCa');
-disp(size(smooth_dpdCa));
-disp('p');
-disp(size(smooth_p));
-disp('dVdCA');
-disp(size(smooth_dVdCa));
-disp('Vavg');
-disp(size(V_avg));
 
 %% Plot aROHR
-% f3 = figure(3);
-% set(f3, 'Position', [400 400 800 400]); % Figure size
-% plot(Ca(:, 1), aROHR, 'LineWidth', 1); % Plot averaged aROHR
-% xlabel('Crank Angle (°)');
-% ylabel('aROHR [J/°CA]');
-% xlim([-45 135]);
-% grid on;
-% title('Apparent Rate of Heat Release (aROHR) vs Crank Angle');
-% Plot aROHR for all datasets
 
 disp('aROHR size is');
 disp(size(aROHR_all));
-% if datasetIndex > size(aROHR_all, 1)
-%     error('datasetIndex exceeds the size of the first dimension of aROHR_all.');
-% end
+
 %% Find the Indices for CaSOI and CaEVO
 Ca_single = Ca(:, 1); % Use the crank angle array (same for all cycles)
 [~, idx_start] = min(abs(Ca_single - CaSOI)); % Index closest to CaSOI
@@ -458,12 +357,6 @@ for datasetIndex = 1:numDatasets
     plot(Ca_single, aROHR_all(1, :), 'DisplayName', 'Dataset 1');
     plot(Ca_single, aROHR_all(1, :), 'DisplayName', sprintf('Dataset %d', datasetIndex));
 end
-disp('Ca size is');
-disp(size(Ca_single)); 
-disp('aROHR size is');
-disp(size(aROHR_all));
-disp('Gamma size is');
-disp(size(Gamma_at_angle));
 
 xlabel('Crank Angle (°)');
 ylabel('aROHR [J/°CA]');

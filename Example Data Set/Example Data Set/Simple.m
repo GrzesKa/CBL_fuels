@@ -62,15 +62,20 @@ CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXP
 
 
 %% Preallocate results structure
-numDatasets = 4;
+numLoads = 3;
+EXP = 1; %Choose which experiment you want to load
 results = struct ( 'Work', [], 'BSFC', [], 'Efficiency', [], 'aROHR', [], 'CumulativeHR', []) ;
 
-%% Loop through each dataset
-for datasetIndex = 1:numDatasets
-    % Load dataset
-    FullName = fullfile('Data/EXP1/4bar', sprintf('P4dataset%d.txt', datasetIndex)); % Adjust file naming as needed
-    dataIn = table2array(readtable(FullName));
-end
+%% Loop through all the data
+for p = 2:4
+for T = 4:10
+timing = T*2;
+% Loop through each dataset
+
+% Load dataset
+FullName = fullfile(sprintf('Data/EXP%d/EXP%d/T%d',EXP, EXP, timing), sprintf('P%dT%d.txt', p,timing)); % Adjust file naming as needed
+dataIn = table2array(readtable(FullName));
+
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
 NdatapointsperCycle = 720/0.2;                         % Nrows is a multitude of NdatapointsperCycle
 Ncycles             = Nrows/NdatapointsperCycle;       % This must be an integer. If not checkwhat is going on
@@ -101,6 +106,18 @@ W_cumm = sum(W_all); %Cummulative function of the Work
 m_fuel_cumm = sum(m_fuel_cycle);
 m_per_cycle = m_fuel_cumm/Ncycles;
 W_per_cycle = W_cumm/Ncycles; %Average work
+
+%Calculates the KPI for each loaded file and adds it to an array
+[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle);
+KPI_index_injection = T-3;
+KPI_index_load = p-1;
+Efficiency(KPI_index_load,KPI_index_injection) = Efficiency_all;
+BSCO2(KPI_index_load,KPI_index_injection) = BSCO2_all;
+BSNOx(KPI_index_load,KPI_index_injection) = BSNOx_all;
+BSFC(KPI_index_load,KPI_index_injection) = BSFC_all;
+injections(KPI_index_injection) = T*2;
+end
+end
 
 
 % Display or save results
@@ -353,7 +370,7 @@ Ca_from_start = Ca_single(idx_start:idx_end); % Crank angle from CaSOI to CaEVO
 aROHR_from_start = aROHR_all(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
 f3 = figure(3);
 hold on; % Hold on to plot all datasets on the same figure
-for datasetIndex = 1:numDatasets
+for datasetIndex = 1:numLoads
     plot(Ca_single, aROHR_all(1, :), 'DisplayName', 'Dataset 1');
     plot(Ca_single, aROHR_all(1, :), 'DisplayName', sprintf('Dataset %d', datasetIndex));
 end
@@ -416,6 +433,102 @@ ylim([min(aHR) - 100, max(aHR) + 100]); % Adjust y-axis limits
 grid on;
 hold off;
 
+
+
+%% KPI Graphs
+% Define the loads and efficiency values
+loads = [2, 3, 4];        % Numeric values for loads (in bar)
+
+for i=1:3
+load = i+1;
+% Creates the bar graph for the Efficiency KPI
+figure;
+subplot(2, 2, 1);
+bar(injections, Efficiency(i,:), 'FaceColor', [0.2, 0.6, 0.8]);
+
+% Add labels and title
+%xlabel('Loads (bar)');
+xlabel('Injection timing (-)');
+ylabel('Efficiency (-)');
+
+ylim([0,1]); % Adjust y-axis limits
+title('Efficiency at Various Loads');
+
+% Optional: Adjust appearance
+grid on; % Add a grid for better readability
+    ax = gca; % Get current axes
+    ax.GridAlpha = 0.3; % Set grid line transparency
+    ax.LineWidth = 1.2; % Make axis lines slightly thicker
+    ax.FontSize = 10; % Adjust font size for axis labels and ticks
+    ax.FontWeight = 'bold'; % Make axis labels bold
+
+
+% Creates the bar graph of BSCO2 KPI
+subplot(2, 2, 2);
+bar(injections, BSCO2(i,:), 'FaceColor', [1, 0.5, 0]);
+
+% Add labels and title
+%xlabel('Loads (bar)');
+xlabel('Injection timing (-)');
+ylabel('BSCO2 (g/KWhr)');
+
+
+title('BSCO2 at Various Loads');
+
+% Optional: Adjust appearance
+grid on; % Add a grid for better readability
+    ax = gca; % Get current axes
+    ax.GridAlpha = 0.3; % Set grid line transparency
+    ax.LineWidth = 1.2; % Make axis lines slightly thicker
+    ax.FontSize = 10; % Adjust font size for axis labels and ticks
+    ax.FontWeight = 'bold'; % Make axis labels bold
+
+
+% Creates the bar graph of BSNOx KPI
+subplot(2, 2, 3);
+bar(injections, BSNOx(i,:), 'FaceColor', [0.4, 0.7, 0.3]);
+
+% Add labels and title
+%xlabel('Loads (bar)');
+xlabel('Injection timing (-)');
+ylabel('BSNOx (g/KWhr)');
+
+%ylim([0,1]); % Adjust y-axis limits
+title('BSNox at Various Loads');
+
+% Optional: Adjust appearance
+grid on; % Add a grid for better readability
+    ax = gca; % Get current axes
+    ax.GridAlpha = 0.3; % Set grid line transparency
+    ax.LineWidth = 1.2; % Make axis lines slightly thicker
+    ax.FontSize = 10; % Adjust font size for axis labels and ticks
+    ax.FontWeight = 'bold'; % Make axis labels bold
+
+
+
+% Creates the bar graph of BSFC KPI
+subplot(2, 2, 4);
+bar(injections, BSFC(i,:), 'FaceColor', [1, 0, 0]);
+
+% Add labels and title
+%xlabel('Loads (bar)');
+xlabel('Injection timing (-)');
+ylabel('BSCFC (g/KWhr)');
+
+%ylim([0,1]); % Adjust y-axis limits
+title('BSFC at Various Loads');
+
+% Optional: Adjust appearance
+grid on; % Add a grid for better readability
+    ax = gca; % Get current axes
+    ax.GridAlpha = 0.3; % Set grid line transparency
+    ax.LineWidth = 1.2; % Make axis lines slightly thicker
+    ax.FontSize = 10; % Adjust font size for axis labels and ticks
+    ax.FontWeight = 'bold'; % Make axis labels bold
+sgtitle(sprintf('KPIs for load %d', load), 'FontSize', 12, 'FontWeight', 'bold');
+end
+
+
 function [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle)
 
 RPM = 1500 ; % Rotations Per Minute of engine
@@ -439,7 +552,7 @@ NOx_NO2 = 0.1; % Percentage of NOx that transforms into NO2
 molar_CO2 = 44;   % g/mol
 molar_NOx = (30 * (1 - NOx_NO2) + 46 * NOx_NO2); % Weighted molar mass of NOx (g/mol)
 molar_H2O = 18;   % g/mol
-molar_Ar = 40;    % g/mol
+molar_Ar = 40;
 molar_N2 = 28;    % g/mol
 molar_O2 = 32;    % g/mol
 
@@ -449,7 +562,7 @@ emission_N2 = 0.76;         % volume fraction for N2
 emission_O2 = 0.135;        % volume fraction for O2
 emission_CO2 = 0.0525;      % volume fraction for CO2
 emission_H20 = 0.05;        % volume fraction for H2O
-emission_Ar = 0.008;        % volume fraction for Ar
+emission_Ar = 0.008;
 emission_NOx = 0.00125;     % volume fraction for NOx
 
 

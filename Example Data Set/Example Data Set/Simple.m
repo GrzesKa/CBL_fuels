@@ -200,82 +200,14 @@ set(gca,'XTick',[0.02 0.05 0.1 0.2 0.5 0.8],...
     'YTick',[0.5 1 2 5 10 20 50],'XGrid','on','YGrid','on');        % I like specific axis labels. Matter of taste
 title({'pV-diagram'})
 
-%% Incremental temp
-
-VIntakeClose = CylinderVolume(CaIVC,Cyl);   %Volume of cylinder after intake valve closes
-DensityAir = 1.204;                         %kg/m3 density of air at atmospheric pressure
-MassAirIntake = VIntakeClose * DensityAir;  %Mass of the air after intake valve closes
-mtot = MassAirIntake;
-Xair = [0 0.21 0.79 0 0];                   %Mol fraction of air
-Mi = [SpS.Mass];                            %Molair mass call from Nasa table
-MAir = Xair*Mi';                            %Molair mass of air 
-Yair = Xair.*Mi/MAir;                       %Mass fraction of air
-Xmix = Xair;
-Ymix = Yair;
-LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, 'Diesel'));  %LHV of the fuel
-Ca_2to3 = -3.2:0.2:149;                     %crank angle injection angle to exhaust valve opening
-AF = 14.7;                                  %Air to fuel ratio
-mfuel = mtot/length(Ca_2to3)/AF;            %Averaged fuel injection per increment
-Elcompfuel = [SpS(1).Elcomp];               %Elemental composition of the fuel
 
 %(function) for loop
 %In: mfuel,mtot Ca, Xmix, Ymix,CaIVC, T, 
 %Out: Xmix, Ymix, gamma, temperature, QLHV
 
 
-T = 800;
-
-%For loop that incrementally adds the fuel every .2 crank angle increments
-%and calculates the new composition, gamma value and temperature
-Gamma_at_angle = zeros(length(Ca_2to3), 2); %Initiates matrix of length(Ca_2to3 by 2
-for i=1:length(Ca_2to3)
-Gamma_at_angle(i,1) = Ca_2to3(i);           %Appends each crank angle to the matrix
-%Current mol values in the cylinder
-nFueladd = mfuel / Mi(1);             % Mols of fuel
-nO2current = mtot * Ymix(2) / Mi(2);  % Mols of O2               
-nN2current = mtot * Ymix(3) / Mi(3);  % Mols of N2 (remains unchanged)
-nCO2current = mtot * Ymix(4) / Mi(4); % Mols of CO2
-nH2Ocurrent = mtot * Ymix(5) / Mi(5); % Mols of H2O
-nTotalCurrent = nFueladd + nO2current + nN2current + nCO2current + nH2Ocurrent;
-mtot = mtot + mfuel;                  %Total mass in the cylinder
-
-%Mol going out                                    
-nO2new = nO2current - (Elcompfuel(3)+Elcompfuel(2)/4)*nFueladd;    % new Mols of O2   
-nN2new = nN2current;                                               % new Mols of N2 (remains unchanged)
-nCO2new = nCO2current + nFueladd * Elcompfuel(3);                  % new Mols of CO2
-nH2Onew = nH2Ocurrent + nFueladd * Elcompfuel(2)/2;                % new Mols of H2O
-nNew = nO2new + nN2new + nCO2new + nH2Onew;                        
 
 
-%Molar mass fractions of the products
-Xmix(1) = 0;
-Xmix(2) = nO2new/nNew;
-Xmix(3) = nN2new/nNew;
-Xmix(4) = nCO2new/nNew;
-Xmix(5) = nH2Onew/nNew;
-
-Mmix = Xmix * Mi';         % Mean molar mass of the mixture
-Ymix = Xmix .* Mi / Mmix;  % Mass fractions of products
-Rgmix = Runiv / Mmix;      % Specific gas constant of the mixture
-
-%For loop calculates the Cp and Cv values for each element in the Array
-    for j=1:5                                                                                       
-        Cpi(:,j) = CpNasa(T,SpS(j));
-        Cvi(:,j) = CvNasa(T,SpS(j)); 
-    end
-Cp = Ymix*Cpi';                 %Calculates the Cp of the fuel using each component Cpi
-Cv = Ymix*Cvi';                 %Calculates the Cv of the fuel using each component Cvi
-Cpcheck = Cv + Rgmix;           %Checks if the  Cp value is consistent with the formula Cp = Cv + Rspecif
-Gamma = Cp/Cv;                  %Calculates gamma using Cp and Cv
-Gamma_at_angle(i,2) = Gamma;    %Appends the gamma value in the second column
-deltaT = LHV*mfuel/(Cp*mtot);   %Calculates
-T = T + deltaT;
-end
-
-%emissions
-CO2_endmass = Ymix(4)*mtot;
-disp('CO2 endmass in grams');
-disp(CO2_endmass*1000);
 
 %% Compute Volume and Derivatives
 
@@ -332,6 +264,150 @@ smooth_p = sgolayfilt(filtered_averaged_p, 1, 9);
 
 % Use the average volume (since geometry doesn't change)
 V_avg = mean(V, 2); % Average over all cycles
+
+%% Incremental Temperature Calculation
+
+desired_value = 1e5;
+% Pegging at 1 bar at BDC
+for i = 1:length(smooth_p)
+    % Calculate the difference between the original first value and the adjusted BDC value
+    diff = smooth_p(180) - desired_value;
+    
+    % Adjust the current element by adding the calculated difference
+    smooth_P(i) = smooth_p(i) - diff;
+end
+smooth_P=smooth_P(:);
+
+
+Vmin = min(V_cycle(:)); %Find the smallest value from the Volume matrix
+B   = Cyl.Bore; %Defined in the CylinderVolume function
+S   = Cyl.Stroke; %Defined in the CylinderVolume function
+Vdiff = pi / 4 * B^2 * S; % Displacement volume
+NSpS = length(SpS); %calculates the length of the SpS matrix
+Pamb = 101325; % pressure in Pa
+B   = Cyl.Bore;
+S   = Cyl.Stroke;
+
+
+% known volumes 
+Vbot = Vmin + Vdiff; % [m^3] the volume of the cylinder at BDC
+Vtop = Vmin; %[m^3] the volume of the cylinder at TDC
+
+VIntakeClose = CylinderVolume(CaIVC,Cyl);   %Volume of cylinder after intake valve closes
+DensityAir = 1.204;                         %kg/m3 density of air at atmospheric pressure
+MassAirIntake = VIntakeClose * DensityAir;  %Mass of the air after intake valve closes
+mtot = MassAirIntake;
+Xair = [0 0.21 0 0 0.79];                   %Mol fraction of air
+Mi = [SpS.Mass];                            %Molair mass call from Nasa table
+MAir = Xair*Mi'*1000;                            %Molair mass of air 
+Yair = Xair.*Mi/MAir;                       %Mass fraction of air
+Xmix = Xair;
+Ymix = Yair;
+LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, 'Diesel'));  %LHV of the fuel
+Ca_2to3 = -3.2:0.2:149;                     %crank angle injection angle to exhaust valve opening
+AF = 14.7;                                  %Air to fuel ratio
+mfuel = mtot/length(Ca_2to3)/AF;            %Averaged fuel injection per increment
+Elcompfuel = [SpS(1).Elcomp];               %Elemental composition of the fuel
+
+% Corrected mass of air
+mAir = 1.204 * Vbot * 1000; % Volume at BDC, mass in g
+
+T_initial = 293; % Initial temperature [K]
+R = 8.314; % Universal gas constant [J/(mol*K)]
+T = zeros(size(Ca)); % Initialize temperature array
+T(1) = T_initial; % Set initial temperature
+
+% Corrected specific gas constant for air
+R_air = R / MAir; % J/(kg*K)
+
+% Corrected temperature calculation
+for i = 1:length(Ca)
+    V_curr = CylinderVolume(Ca(i), Cyl); % Volume at current crank angle
+    P_curr = smooth_P(i); % Pressure at current crank angle
+    T_curr = P_curr * V_curr / (R_air * mAir); % Temperature using ideal gas law [pV=nRT]
+    T(i) = T_curr; % Store temperature
+end
+
+
+
+% Plotting Temperature vs Crank Angle
+figure;
+plot(Ca, T, 'LineWidth', 1.5);
+xlabel('Crank Angle (°)');
+ylabel('Temperature [K]');
+xlim([-180 180]);
+title('Cylinder Temperature vs Crank Angle');
+grid on;
+
+%% Gamma calculations
+%T = 800;
+
+%For loop that incrementally adds the fuel every .2 crank angle increments
+%and calculates the new composition, gamma value and temperature
+Gamma_at_angle = zeros(length(Ca_2to3), 2); %Initiates matrix of length(Ca_2to3 by 2
+
+for i=1:length(Ca_2to3)
+Gamma_at_angle(i,1) = Ca_2to3(i);           %Appends each crank angle to the matrix
+end
+
+%Current mol values in the cylinder
+nFueladd = mfuel / Mi(1);             % Mols of fuel
+nO2current = mtot * Ymix(2) / Mi(2);  % Mols of O2               
+nN2current = mtot * Ymix(3) / Mi(3);  % Mols of N2 (remains unchanged)
+nCO2current = mtot * Ymix(4) / Mi(4); % Mols of CO2
+nH2Ocurrent = mtot * Ymix(5) / Mi(5); % Mols of H2O
+nTotalCurrent = nFueladd + nO2current + nN2current + nCO2current + nH2Ocurrent;
+mtot = mtot + mfuel;                  %Total mass in the cylinder
+
+%Mol going out                                    
+nO2new = nO2current - (Elcompfuel(3)+Elcompfuel(2)/4)*nFueladd;    % new Mols of O2   
+nN2new = nN2current;                                               % new Mols of N2 (remains unchanged)
+nCO2new = nCO2current + nFueladd * Elcompfuel(3);                  % new Mols of CO2
+nH2Onew = nH2Ocurrent + nFueladd * Elcompfuel(2)/2;                % new Mols of H2O
+nNew = nO2new + nN2new + nCO2new + nH2Onew;                        
+
+
+%Molar mass fractions of the products
+Xmix(1) = 0;
+Xmix(2) = nO2new/nNew;
+Xmix(3) = nN2new/nNew;
+Xmix(4) = nCO2new/nNew;
+Xmix(5) = nH2Onew/nNew;
+
+Mmix = Xmix * Mi';         % Mean molar mass of the mixture
+Ymix = Xmix .* Mi / Mmix;  % Mass fractions of products
+Rgmix = Runiv / Mmix;      % Specific gas constant of the mixture
+
+% %For loop calculates the Cp and Cv values for each element in the Array
+%     for j=1:5                                                                                       
+%         Cpi(:,j) = CpNasa(T,SpS(j));
+%         Cvi(:,j) = CvNasa(T,SpS(j)); 
+%     end
+% Cp = Ymix*Cpi';                 %Calculates the Cp of the fuel using each component Cpi
+% Cv = Ymix*Cvi';                 %Calculates the Cv of the fuel using each component Cvi
+% Cpcheck = Cv + Rgmix;           %Checks if the  Cp value is consistent with the formula Cp = Cv + Rspecif
+% Gamma = Cp/Cv;                  %Calculates gamma using Cp and Cv
+% Gamma_at_angle(i,2) = Gamma;    %Appends the gamma value in the second column
+% deltaT = LHV*mfuel/(Cp*mtot);   %Calculates
+% T = T + deltaT;
+% end
+
+% Calculate Cp and Cv for the current temperature
+    for j = 1:NSpS
+        Cp_T(j) = CpNasa(T_curr, SpS(j));
+        Cv_T(j) = CvNasa(T_curr, SpS(j)); 
+    end
+    
+    % Weighted averages based on air composition
+    Cp_avg = Yair * Cp_T';
+    Cv_avg = Yair * Cv_T';
+    gamma_curr = Cp_avg/Cv_avg;
+
+%emissions
+CO2_endmass = Ymix(4)*mtot;
+disp('CO2 endmass in grams');
+disp(CO2_endmass*1000);
+
 
 %% Plot aROHR
 
@@ -546,19 +622,7 @@ sgtitle(sprintf('KPIs for load %d', load), 'FontSize', 12, 'FontWeight', 'bold')
 end
 
 
-function [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle)
 
-RPM = 1500 ; % Rotations Per Minute of engine
-Power_engine = ((W_per_cycle/1000) * RPM)/120 ; % Power of engine, work hardcoded due to errors
-LHV_B7 = 43e6; % LHV of B7 diesel in J/kg
-V_air =  max(V_cycle); % volume of air in 0.5 cycle * nr of cycles in 1 second
-mass_fuel = 0.0001176; % mass of fuel being injected (data from sensors)
-ro_air = 1.293 ; % Density air 
-V_air_ps = V_air*RPM/120 ; % Volume of air per second
-m_air = V_air_ps * ro_air ; % mass of air entering, calculated using v of air in 1 second * density
-exhaust_massflow = mass_fuel + m_air; % total mass flowing
-exhaust_massflow_grams = exhaust_massflow * 1000; % used for the brake specific KPI's in g/
-Efuel = mass_fuel*LHV_B7 ; 
 
 %% KPIs calculation 
 
@@ -608,6 +672,20 @@ disp(['BSNOx_all:', num2str(BSNOx_all), 'g/kWhr']);
 
 disp(['BSFC_all:', num2str(BSFC_all), 'g/kWhr']);
 
+
+function [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle)
+
+RPM = 1500 ; % Rotations Per Minute of engine
+Power_engine = ((W_per_cycle/1000) * RPM)/120 ; % Power of engine, work hardcoded due to errors
+LHV_B7 = 43e6; % LHV of B7 diesel in J/kg
+V_air =  max(V_cycle); % volume of air in 0.5 cycle * nr of cycles in 1 second
+mass_fuel = 0.0001176; % mass of fuel being injected (data from sensors)
+ro_air = 1.293 ; % Density air 
+V_air_ps = V_air*RPM/120 ; % Volume of air per second
+m_air = V_air_ps * ro_air ; % mass of air entering, calculated using v of air in 1 second * density
+exhaust_massflow = mass_fuel + m_air; % total mass flowing
+exhaust_massflow_grams = exhaust_massflow * 1000; % used for the brake specific KPI's in g/
+Efuel = mass_fuel*LHV_B7 ; 
 
 end
 
@@ -680,3 +758,19 @@ T1 %outputs temperatures in command window
 T2
 T3
 T4
+
+% function [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle)
+% 
+% RPM = 1500 ; % Rotations Per Minute of engine
+% Power_engine = ((W_per_cycle/1000) * RPM)/120 ; % Power of engine, work hardcoded due to errors
+% LHV_B7 = 43e6; % LHV of B7 diesel in J/kg
+% V_air =  max(V_cycle); % volume of air in 0.5 cycle * nr of cycles in 1 second
+% mass_fuel = 0.0001176; % mass of fuel being injected (data from sensors)
+% ro_air = 1.293 ; % Density air 
+% V_air_ps = V_air*RPM/120 ; % Volume of air per second
+% m_air = V_air_ps * ro_air ; % mass of air entering, calculated using v of air in 1 second * density
+% exhaust_massflow = mass_fuel + m_air; % total mass flowing
+% exhaust_massflow_grams = exhaust_massflow * 1000; % used for the brake specific KPI's in g/
+% Efuel = mass_fuel*LHV_B7 ; 
+% 
+% end

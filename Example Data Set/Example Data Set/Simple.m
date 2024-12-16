@@ -420,7 +420,7 @@ disp('CO2 endmass in grams');
 disp(CO2_endmass*1000);
 
 
-%% Plot aROHR
+%% Compute aROHR
 
  % Interpolate gamma for the given crank angles in Ca(:, 1)
 

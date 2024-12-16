@@ -133,9 +133,9 @@ mass_flow_air = volumetric_flow * density_air;
 Densityrow = strcmp(FuelTable.Fuel, selectedFuel);
 densityfuel = FuelTable.Density(Densityrow);
 m_air = (V_cycle-(m_fuel_cycle/densityfuel))*density_air;
-AFR = m_air/m_fuel_cycle;
+AFR = m_air./m_fuel_cycle;
 
-mass_flow_fuel = mass_flow_air./AFR; %air to fuel ratio
+mass_flow_fuel = mass_flow_air/AFR; %air to fuel ratio
 mass_flow_fuel_cycle = mass_flow_fuel/12.5;
 
 

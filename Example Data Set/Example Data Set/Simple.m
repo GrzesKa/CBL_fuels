@@ -61,16 +61,24 @@ CaEVC = -344;  %Exhaust valve closes
 CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXPERIMENT
 
 
+
 %% Preallocate results structure
 numLoads = 3;
 EXP = 1; %Choose which experiment you want to load
 results = struct ( 'Work', [], 'BSFC', [], 'Efficiency', [], 'aROHR', [], 'CumulativeHR', []) ;
 
+%% Emission data
+
+FullName = fullfile(sprintf('Data/EXP%d/EXP%d',EXP, EXP), sprintf('EmissionDataDiesel.txt')); % Adjust file naming as needed
+dataEmission = readtable(FullName);
+dataEmission.Properties.VariableNames = {'Load', 'InjectionTiming', 'CO', 'CO2', 'HC', 'O2', 'NOx'};
 %% Loop through all the data
 for p = 2:4
 for T = 4:10
+
 timing = T*2;
-% Loop through each dataset
+% Emmision dataset sorting
+
 
 % Load dataset
 FullName = fullfile(sprintf('Data/EXP%d/EXP%d/T%d',EXP, EXP, timing), sprintf('P%dT%d.txt', p,timing)); % Adjust file naming as needed
@@ -108,16 +116,21 @@ m_fuel_cumm = sum(m_fuel_cycle);
 m_per_cycle = m_fuel_cumm/Ncycles;
 W_per_cycle = W_cumm/Ncycles; %Average work
 
-% %Calculates the KPI for each loaded file and adds it to an array
-% [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle);
-% 
-% KPI_index_injection = T-3;
-% KPI_index_load = p-1;
-% Efficiency_all = Efficiency(KPI_index_load,KPI_index_injection); 
-% BSCO2(KPI_index_load,KPI_index_injection) = BSCO2_all;
-% BSNOx(KPI_index_load,KPI_index_injection) = BSNOx_all;
-% BSFC(KPI_index_load,KPI_index_injection) = BSFC_all;
-% injections(KPI_index_injection) = T*2;
+%Taking data out of emmision data table
+EmissionLoadIndex = (p-1)*20+10;
+filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
+avgCO2 = mean(filteredRows.CO2)
+avgNOx = mean(filteredRows.NOx)
+VolumeEmission = CylinderVolume(CaEVO,Cyl);         %Cylinder volume when exhaust valve opens
+%Calculates the KPI for each loaded file and adds it to an array
+[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission);
+KPI_index_injection = T-3;
+KPI_index_load = p-1;
+Efficiency(KPI_index_load,KPI_index_injection) = Efficiency_all;
+BSCO2(KPI_index_load,KPI_index_injection) = BSCO2_all;
+BSNOx(KPI_index_load,KPI_index_injection) = BSNOx_all;
+BSFC(KPI_index_load,KPI_index_injection) = BSFC_all;
+injections(KPI_index_injection) = T*2;
 end
 end
 
@@ -217,7 +230,7 @@ title({'pV-diagram'})
 Ca = Ca_matrix;       % Use all crank angle data
 p = p_matrix;         % Use all pressure data
 V = V_matrix;         % Use all volume data
-
+Ca_single = Ca(:, 1); % Use the crank angle array (same for all cycles)
 % Preallocate derivative matrices
 dVdCa = zeros(size(V));
 dpdCa = zeros(size(p));
@@ -316,7 +329,7 @@ mAir = 1.204 * Vbot * 1000; % Volume at BDC, mass in g
 
 T_initial = 293; % Initial temperature [K]
 R = 8.314; % Universal gas constant [J/(mol*K)]
-T = zeros(size(Ca)); % Initialize temperature array
+T = zeros(size(Ca_single)); % Initialize temperature array
 T(1) = T_initial; % Set initial temperature
 
 % Corrected specific gas constant for air
@@ -473,10 +486,12 @@ end
 Ca_from_start = Ca_single(idx_start:idx_end); % Crank angle from CaSOI to CaEVO
 aROHR_from_start = aROHR_all(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
 f3 = figure(3);
+figure;
 hold on; % Hold on to plot all datasets on the same figure
 for datasetIndex = 1:numLoads
     plot(Ca_single, aROHR_all(1, :), 'DisplayName', 'Dataset 1');
     plot(Ca_single, aROHR_all(1, :), 'DisplayName', sprintf('Dataset %d', datasetIndex));
+    hold on; % Hold on to plot all datasets on the same figure
 end
 
 xlabel('Crank Angle (°)');
@@ -539,166 +554,174 @@ hold off;
 
 
 
-% %% KPI Graphs
-% % Define the loads and efficiency values
-% loads = [2, 3, 4];        % Numeric values for loads (in bar)
-% 
-% for i=1:3
-% load = i+1;
-% % Creates the bar graph for the Efficiency KPI
-% figure;
-% subplot(2, 2, 1);
-% bar(injections, Efficiency(i,:), 'FaceColor', [0.2, 0.6, 0.8]);
-% 
-% % Add labels and title
-% %xlabel('Loads (bar)');
-% xlabel('Injection timing (-)');
-% ylabel('Efficiency (-)');
-% 
-% ylim([0,1]); % Adjust y-axis limits
-% title('Efficiency at Various Loads');
-% 
-% % Optional: Adjust appearance
-% grid on; % Add a grid for better readability
-%     ax = gca; % Get current axes
-%     ax.GridAlpha = 0.3; % Set grid line transparency
-%     ax.LineWidth = 1.2; % Make axis lines slightly thicker
-%     ax.FontSize = 10; % Adjust font size for axis labels and ticks
-%     ax.FontWeight = 'bold'; % Make axis labels bold
-% 
-% 
-% % Creates the bar graph of BSCO2 KPI
-% subplot(2, 2, 2);
-% bar(injections, BSCO2(i,:), 'FaceColor', [1, 0.5, 0]);
-% 
-% % Add labels and title
-% %xlabel('Loads (bar)');
-% xlabel('Injection timing (-)');
-% ylabel('BSCO2 (g/KWhr)');
-% 
-% 
-% title('BSCO2 at Various Loads');
-% 
-% % Optional: Adjust appearance
-% grid on; % Add a grid for better readability
-%     ax = gca; % Get current axes
-%     ax.GridAlpha = 0.3; % Set grid line transparency
-%     ax.LineWidth = 1.2; % Make axis lines slightly thicker
-%     ax.FontSize = 10; % Adjust font size for axis labels and ticks
-%     ax.FontWeight = 'bold'; % Make axis labels bold
-% 
-% 
-% % Creates the bar graph of BSNOx KPI
-% subplot(2, 2, 3);
-% bar(injections, BSNOx(i,:), 'FaceColor', [0.4, 0.7, 0.3]);
-% 
-% % Add labels and title
-% %xlabel('Loads (bar)');
-% xlabel('Injection timing (-)');
-% ylabel('BSNOx (g/KWhr)');
-% 
-% %ylim([0,1]); % Adjust y-axis limits
-% title('BSNox at Various Loads');
-% 
-% % Optional: Adjust appearance
-% grid on; % Add a grid for better readability
-%     ax = gca; % Get current axes
-%     ax.GridAlpha = 0.3; % Set grid line transparency
-%     ax.LineWidth = 1.2; % Make axis lines slightly thicker
-%     ax.FontSize = 10; % Adjust font size for axis labels and ticks
-%     ax.FontWeight = 'bold'; % Make axis labels bold
-% 
-% 
-% 
-% % Creates the bar graph of BSFC KPI
-% subplot(2, 2, 4);
-% bar(injections, BSFC(i,:), 'FaceColor', [1, 0, 0]);
-% 
-% % Add labels and title
-% %xlabel('Loads (bar)');
-% xlabel('Injection timing (-)');
-% ylabel('BSCFC (g/KWhr)');
-% 
-% %ylim([0,1]); % Adjust y-axis limits
-% title('BSFC at Various Loads');
-% 
-% % Optional: Adjust appearance
-% grid on; % Add a grid for better readability
-%     ax = gca; % Get current axes
-%     ax.GridAlpha = 0.3; % Set grid line transparency
-%     ax.LineWidth = 1.2; % Make axis lines slightly thicker
-%     ax.FontSize = 10; % Adjust font size for axis labels and ticks
-%     ax.FontWeight = 'bold'; % Make axis labels bold
-% sgtitle(sprintf('KPIs for load %d', load), 'FontSize', 12, 'FontWeight', 'bold');
-% end
-% 
-% 
+%% KPI Graphs
+% Define the loads and efficiency values
+loads = [2, 3, 4];        % Numeric values for loads (in bar)
+
+for i=1:3
+load = i+1;
+% Creates the bar graph for the Efficiency KPI
+figure;
+subplot(2, 2, 1);
+bar(injections, Efficiency(i,:), 'FaceColor', [0.2, 0.6, 0.8]);
+
+% Add labels and title
+%xlabel('Loads (bar)');
+xlabel('Injection timing (-)');
+ylabel('Efficiency (-)');
+
+ylim([0,1]); % Adjust y-axis limits
+title('Efficiency at Various Loads');
+
+% Optional: Adjust appearance
+grid on; % Add a grid for better readability
+    ax = gca; % Get current axes
+    ax.GridAlpha = 0.3; % Set grid line transparency
+    ax.LineWidth = 1.2; % Make axis lines slightly thicker
+    ax.FontSize = 10; % Adjust font size for axis labels and ticks
+    ax.FontWeight = 'bold'; % Make axis labels bold
 
 
-% %% KPIs calculation 
-% 
-% Efficiency_all = Power_engine*1000/Efuel ; % work per cycle/Efuel (work in J)
-% 
-% %Molar mass
-% NOx_NO2 = 0.1; % Percentage of NOx that transforms into NO2
-% molar_CO2 = 44;   % g/mol
-% molar_NOx = (30 * (1 - NOx_NO2) + 46 * NOx_NO2); % Weighted molar mass of NOx (g/mol)
-% molar_H2O = 18;   % g/mol
-% molar_Ar = 40;
-% molar_N2 = 28;    % g/mol
-% molar_O2 = 32;    % g/mol
-% 
-% 
-% % Combustion volume fractions of diesel
-% emission_N2 = 0.76;         % volume fraction for N2
-% emission_O2 = 0.135;        % volume fraction for O2
-% emission_CO2 = 0.0525;      % volume fraction for CO2
-% emission_H20 = 0.05;        % volume fraction for H2O
-% emission_Ar = 0.008;
-% emission_NOx = 0.00125;     % volume fraction for NOx
-% 
-% 
-% % Total molar mass contribution
-% total_molar_mass = (emission_N2 * molar_N2) + (emission_O2 * molar_O2) + (emission_CO2 * molar_CO2) + (emission_H20 * molar_H2O) + (emission_Ar * molar_Ar) + (emission_NOx * molar_NOx);
-% 
-% 
-% % Volume-to-mass fraction conversion
-% mass_fraction_CO2 = (emission_CO2 * molar_CO2) / total_molar_mass;
-% mass_fraction_NOx = (emission_NOx * molar_NOx) / total_molar_mass;
-% 
-% % Mass flow rates
-% CO2_massflow = exhaust_massflow_grams * mass_fraction_CO2; 
-% NOx_massflow = exhaust_massflow_grams * mass_fraction_NOx; 
-% 
-% %KPIs - x3600 to get to kWhr
-% BSCO2_all = (CO2_massflow*3600)/Power_engine;
-% BSNOx_all = (NOx_massflow*3600)/Power_engine;
-% BSFC_all = (mass_fuel*3600)/Power_engine;
-% 
-% disp(['Efficiency_all:', num2str(Efficiency_all)]);
-% 
-% disp(['BSCO2_all:', num2str(BSCO2_all), 'g/kWhr']);
-% 
-% disp(['BSNOx_all:', num2str(BSNOx_all), 'g/kWhr']);
-% 
-% disp(['BSFC_all:', num2str(BSFC_all), 'g/kWhr']);
-% 
-% 
-% function [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle)
-% 
-% RPM = 1500 ; % Rotations Per Minute of engine
-% Power_engine = ((W_per_cycle/1000) * RPM)/120 ; % Power of engine, work hardcoded due to errors
-% LHV_B7 = 43e6; % LHV of B7 diesel in J/kg
-% V_air =  max(V_cycle); % volume of air in 0.5 cycle * nr of cycles in 1 second
-% mass_fuel = 0.0001176; % mass of fuel being injected (data from sensors)
-% ro_air = 1.293 ; % Density air 
-% V_air_ps = V_air*RPM/120 ; % Volume of air per second
-% m_air = V_air_ps * ro_air ; % mass of air entering, calculated using v of air in 1 second * density
-% exhaust_massflow = mass_fuel + m_air; % total mass flowing
-% exhaust_massflow_grams = exhaust_massflow * 1000; % used for the brake specific KPI's in g/
-% Efuel = mass_fuel*LHV_B7 ; 
-% 
-% end
+% Creates the bar graph of BSCO2 KPI
+subplot(2, 2, 2);
+bar(injections, BSCO2(i,:), 'FaceColor', [1, 0.5, 0]);
+
+% Add labels and title
+%xlabel('Loads (bar)');
+xlabel('Injection timing (-)');
+ylabel('BSCO2 (g/KWhr)');
+
+
+title('BSCO2 at Various Loads');
+
+% Optional: Adjust appearance
+grid on; % Add a grid for better readability
+    ax = gca; % Get current axes
+    ax.GridAlpha = 0.3; % Set grid line transparency
+    ax.LineWidth = 1.2; % Make axis lines slightly thicker
+    ax.FontSize = 10; % Adjust font size for axis labels and ticks
+    ax.FontWeight = 'bold'; % Make axis labels bold
+
+
+% Creates the bar graph of BSNOx KPI
+subplot(2, 2, 3);
+bar(injections, BSNOx(i,:), 'FaceColor', [0.4, 0.7, 0.3]);
+
+% Add labels and title
+%xlabel('Loads (bar)');
+xlabel('Injection timing (-)');
+ylabel('BSNOx (mg/KWhr)');
+
+%ylim([0,1]); % Adjust y-axis limits
+title('BSNox at Various Loads');
+
+% Optional: Adjust appearance
+grid on; % Add a grid for better readability
+    ax = gca; % Get current axes
+    ax.GridAlpha = 0.3; % Set grid line transparency
+    ax.LineWidth = 1.2; % Make axis lines slightly thicker
+    ax.FontSize = 10; % Adjust font size for axis labels and ticks
+    ax.FontWeight = 'bold'; % Make axis labels bold
+
+
+
+% Creates the bar graph of BSFC KPI
+subplot(2, 2, 4);
+bar(injections, BSFC(i,:), 'FaceColor', [1, 0, 0]);
+
+% Add labels and title
+%xlabel('Loads (bar)');
+xlabel('Injection timing (-)');
+ylabel('BSCFC (g/KWhr)');
+
+%ylim([0,1]); % Adjust y-axis limits
+title('BSFC at Various Loads');
+
+% Optional: Adjust appearance
+grid on; % Add a grid for better readability
+    ax = gca; % Get current axes
+    ax.GridAlpha = 0.3; % Set grid line transparency
+    ax.LineWidth = 1.2; % Make axis lines slightly thicker
+    ax.FontSize = 10; % Adjust font size for axis labels and ticks
+    ax.FontWeight = 'bold'; % Make axis labels bold
+sgtitle(sprintf('KPIs for load %d', load), 'FontSize', 12, 'FontWeight', 'bold');
+hold off;
+end
+
+function [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,CO2, NOx,VolumeEmission)
+
+RPM = 1500 ; % Rotations Per Minute of engine
+Power_engine = ((W_per_cycle/1000) * RPM)/120 ; % Power of engine, work hardcoded due to errors
+LHV_B7 = 43e6; % LHV of B7 diesel in J/kg
+V_air =  max(V_cycle); % volume of air in 0.5 cycle * nr of cycles in 1 second
+mass_fuel = 0.0001176; % mass of fuel being injected (data from sensors)
+ro_air = 1.293 ; % Density air 
+V_air_ps = V_air*RPM/120 ; % Volume of air per second
+m_air = V_air_ps * ro_air ; % mass of air entering, calculated using v of air in 1 second * density
+exhaust_massflow = mass_fuel + m_air; % total mass flowing
+exhaust_massflow_grams = exhaust_massflow * 1000; % used for the brake specific KPI's in g/
+Efuel = mass_fuel*LHV_B7 ; 
+
+%% KPIs calculation 
+
+Efficiency_all = Power_engine*1000/Efuel ; % work per cycle/Efuel (work in J)
+
+%Molar mass
+NOx_NO2 = 0.1; % Percentage of NOx that transforms into NO2
+molar_CO2 = 44;   % g/mol
+molar_NOx = (30 * (1 - NOx_NO2) + 46 * NOx_NO2); % Weighted molar mass of NOx (g/mol)
+molar_H2O = 18;   % g/mol
+molar_Ar = 40;
+molar_N2 = 28;    % g/mol
+molar_O2 = 32;    % g/mol
+
+
+% Combustion volume fractions of diesel
+emission_N2 = 0.76;         % volume fraction for N2
+emission_O2 = 0.135;        % volume fraction for O2
+emission_CO2 = 0.0525;      % volume fraction for CO2
+emission_H20 = 0.05;        % volume fraction for H2O
+emission_Ar = 0.008;
+emission_NOx = 0.00125;     % volume fraction for NOx
+
+
+% Total molar mass contribution
+total_molar_mass = (emission_N2 * molar_N2) + (emission_O2 * molar_O2) + (emission_CO2 * molar_CO2) + (emission_H20 * molar_H2O) + (emission_Ar * molar_Ar) + (emission_NOx * molar_NOx);
+
+
+% Volume-to-mass fraction conversion
+mass_fraction_CO2 = (emission_CO2 * molar_CO2) / total_molar_mass;
+mass_fraction_NOx = (emission_NOx * molar_NOx) / total_molar_mass;
+
+% Mass flow rates OLD
+%CO2_massflow = exhaust_massflow_grams * mass_fraction_CO2; 
+%NOx_massflow = exhaust_massflow_grams * mass_fraction_NOx; 
+
+% Mass flow rates NEW
+DensityCO2 = 1.98e3;                                %Density of CO2 at 20 degrees celcius (g/m^3)
+
+CO2_massflow = CO2/100*VolumeEmission*DensityCO2/100;
+NOx_massflow = NOx*46.01/24*VolumeEmission/100;
+
+%KPIs - x3600 to get to kWhr
+BSCO2_all = (CO2_massflow*3600)/Power_engine;
+BSNOx_all = (NOx_massflow*3600)/Power_engine;
+BSFC_all = (mass_fuel*3600)/Power_engine;
+
+disp(['Efficiency_all:', num2str(Efficiency_all)]);
+
+disp(['BSCO2_all:', num2str(BSCO2_all), 'g/kWhr']);
+
+disp(['BSNOx_all:', num2str(BSNOx_all), 'g/kWhr']);
+
+disp(['BSFC_all:', num2str(BSFC_all), 'g/kWhr']);
+
+
+end
+
+
+
+
 
 
 
@@ -770,18 +793,3 @@ T2
 T3
 T4
 
-% function [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle)
-% 
-% RPM = 1500 ; % Rotations Per Minute of engine
-% Power_engine = ((W_per_cycle/1000) * RPM)/120 ; % Power of engine, work hardcoded due to errors
-% LHV_B7 = 43e6; % LHV of B7 diesel in J/kg
-% V_air =  max(V_cycle); % volume of air in 0.5 cycle * nr of cycles in 1 second
-% mass_fuel = 0.0001176; % mass of fuel being injected (data from sensors)
-% ro_air = 1.293 ; % Density air 
-% V_air_ps = V_air*RPM/120 ; % Volume of air per second
-% m_air = V_air_ps * ro_air ; % mass of air entering, calculated using v of air in 1 second * density
-% exhaust_massflow = mass_fuel + m_air; % total mass flowing
-% exhaust_massflow_grams = exhaust_massflow * 1000; % used for the brake specific KPI's in g/
-% Efuel = mass_fuel*LHV_B7 ; 
-% 
-% end

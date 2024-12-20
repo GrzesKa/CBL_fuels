@@ -143,9 +143,7 @@ volumetric_flow = volume_displaced_cycle * 0.5 * (RPM/60);
 density_air = intake_pressure/(intake_temp*spec_gasct_air);
 mass_flow_air = volumetric_flow * density_air;
 
-Densityrow = strcmp(FuelTable.Fuel, selectedFuel);
-densityfuel = FuelTable.Density(Densityrow);
-m_air = (V_cycle-(m_fuel_cycle/densityfuel))*density_air;
+m_air = (mass_flow_air*2)/(RPM/60);
 AFR = m_air./m_fuel_cycle;
 
 mass_flow_fuel = mass_flow_air./AFR; %air to fuel ratio

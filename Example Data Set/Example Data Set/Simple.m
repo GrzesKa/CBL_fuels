@@ -278,19 +278,60 @@ smooth_p = sgolayfilt(filtered_averaged_p, 1, 9);
 % Use the average volume (since geometry doesn't change)
 V_avg = mean(V, 2); % Average over all cycles
 
-%% Incremental Temperature Calculation
+%% Pegging
 
-desired_value = 1e5;
+desired_value = 101325;
+% Calculate the difference between the original first value and the adjusted BDC value
+idx_BDC = NCa/4;
+diff = smooth_p(idx_BDC) - desired_value;
+    
 % Pegging at 1 bar at BDC
 for i = 1:length(smooth_p)
-    % Calculate the difference between the original first value and the adjusted BDC value
-    diff = smooth_p(180) - desired_value;
+
+    idx_BDC = NCa/4;
+    diff = smooth_p(idx_BDC) - desired_value;
     
     % Adjust the current element by adding the calculated difference
     smooth_P(i) = smooth_p(i) - diff;
+    filtered_averaged_p(i) = filtered_averaged_p(i)-diff;
 end
 smooth_P=smooth_P(:);
 
+Ca_single = Ca(:, 1);
+dpdCa = zeros(size(Ca_single));
+
+dpdCa = gradient(smooth_P, Ca_single);
+
+dpdCa = sgolayfilt(dpdCa, 5, 37);
+
+f6 = figure(6);
+subplot(2,2,1)
+hold on;
+plot(Ca_single,dpdCa) %filtered_averaged_p/bara)
+plot(Ca_single,filtered_averaged_dpdCa)
+plot(Ca_single,smooth_dpdCa)
+legend('dpdCa','filtered_averaged_dpdCa','smooth_dpdCa')
+xlim([-45 135])
+hold off;
+subplot(2,2,2)
+plot(Ca_single,V_cycle)
+xlim([-45 135])
+legend()
+subplot(2,2,3)
+hold on;
+plot(Ca_single,filtered_averaged_p)
+plot(Ca_single, smooth_P)
+plot(Ca_single, smooth_p)
+legend('filtered_averaged_p','smooth_P','smooth_p')
+xlim([-45 135])
+hold off;
+subplot(2,2,4)
+hold on;
+plot(Ca_single,dpdCa)
+
+xlim([-45 135])
+legend()
+hold off;
 
 Vmin = min(V_cycle(:)); %Find the smallest value from the Volume matrix
 B   = Cyl.Bore; %Defined in the CylinderVolume function
@@ -312,7 +353,7 @@ MassAirIntake = VIntakeClose * DensityAir;  %Mass of the air after intake valve 
 mtot = MassAirIntake;
 Xair = [0 0.21 0 0 0.79];                   %Mol fraction of air
 Mi = [SpS.Mass];                            %Molair mass call from Nasa table
-MAir = Xair*Mi'*1000;                            %Molair mass of air 
+MAir = Xair*Mi';                            %Molair mass of air 
 Yair = Xair.*Mi/MAir;                       %Mass fraction of air
 Xmix = Xair;
 Ymix = Yair;
@@ -323,10 +364,10 @@ mfuel = mtot/length(Ca_2to3)/AF;            %Averaged fuel injection per increme
 Elcompfuel = [SpS(1).Elcomp];               %Elemental composition of the fuel
 
 % Corrected mass of air
-mAir = 1.204 * Vbot * 1000; % Volume at BDC, mass in g
+mAir = 1.293 * Vbot; % Volume at BDC, mass in g
 
 T_initial = 293; % Initial temperature [K]
-R = 8.314; % Universal gas constant [J/(mol*K)]
+R = 8314; % Universal gas constant [J/(mol*K)]
 T = zeros(size(Ca_single)); % Initialize temperature array
 T(1) = T_initial; % Set initial temperature
 
@@ -334,8 +375,11 @@ T(1) = T_initial; % Set initial temperature
 R_air = R / MAir; % J/(kg*K)
 
 % Corrected temperature calculation
-for i = 1:length(Ca)
-    V_curr = CylinderVolume(Ca(i), Cyl); % Volume at current crank angle
+Gamma_at_angle = zeros(length(Ca_single), 2); %Initiates matrix of length(Ca_2to3 by 2
+
+for i = 1:length(Ca_single)
+    Gamma_at_angle(i,1) = Ca_single(i);           %Appends each crank angle to the matrix
+    V_curr = V_cycle(i); % Volume at current crank angle
     P_curr = smooth_P(i); % Pressure at current crank angle
     
     % Check for valid V_curr and P_curr
@@ -343,11 +387,28 @@ for i = 1:length(Ca)
         warning('Invalid volume at index %d: %f. Skipping...', i, V_curr);
         continue;
     end
-   
+    
+
+
+    
 
     T_curr = P_curr * V_curr / (R_air * mAir); % Temperature using ideal gas law [pV=nRT]
     T(i) = T_curr; % Store temperature
+    % Calculate Cp and Cv for the current temperature (Sander's new code)
+    for j = 1:NSpS
+        Cp_T(j) = CpNasa(T(i), SpS(j));
+        Cv_T(j) = CvNasa(T(i), SpS(j)); 
+    end
+    
+    % Weighted averages based on air composition
+    Cp_avg = Yair * Cp_T';
+    Cv_avg = Yair * Cv_T';
+    R_air = Cp_avg-Cv_avg;
+    gamma_curr = Cp_avg/Cv_avg;
+    Gamma_at_angle(i,2) = gamma_curr;    %Appends the gamma value in the second column
 end
+
+
 
 
 
@@ -356,8 +417,18 @@ figure;
 plot(Ca, T, 'LineWidth', 1.5);
 xlabel('Crank Angle (°)');
 ylabel('Temperature [K]');
-xlim([-180 180]);
+xlim([-360 360]);
 title('Cylinder Temperature vs Crank Angle');
+grid on;
+
+
+% Plotting Gamma vs Crank Angle
+figure;
+plot(Ca_single, Gamma_at_angle(:,2), 'LineWidth', 1.5);
+xlabel('Crank Angle (°)');
+ylabel('Gamma [-]');
+xlim([-360 360]);
+title('Gamma value vs Crank Angle');
 grid on;
 
 %% Gamma calculations
@@ -365,10 +436,10 @@ grid on;
 
 %For loop that incrementally adds the fuel every .2 crank angle increments
 %and calculates the new composition, gamma value and temperature
-Gamma_at_angle = zeros(length(Ca_2to3), 2); %Initiates matrix of length(Ca_2to3 by 2
+%Gamma_at_angle = zeros(length(Ca_2to3), 2); %Initiates matrix of length(Ca_2to3 by 2
 
 for i=1:length(Ca_2to3)
-Gamma_at_angle(i,1) = Ca_2to3(i);           %Appends each crank angle to the matrix
+%Gamma_at_angle(i,1) = Ca_2to3(i);           %Appends each crank angle to the matrix
 end
 
 %Current mol values in the cylinder
@@ -450,25 +521,16 @@ disp(CO2_endmass*1000);
     in_range = (Ca(:, 1) >= Gamma_at_angle(1, 1)) & (Ca(:, 1) <= Gamma_at_angle(end, 1));
     gamma_full(in_range) = interp1(Gamma_at_angle(:, 1), Gamma_at_angle(:, 2), Ca(in_range, 1), 'linear');
 
-% % Initialize aROHR_all
+% % Initialize aROHR
 
-aROHR_all = zeros(1, length(gamma_full)); % Preallocate for speed, assuming numDatasets is defined
-for i = 1:length(gamma_full)
-    gammaidk = gamma_full(i);
-    smoothpidk = smooth_p(i);
-    Vavgidk = V_avg(i);
-    smoothdpdCaidk = smooth_dpdCa(i);
-    smoothdVdCaidk = smooth_dVdCa(i);
-    % Compute aROHR using the interpolated gamma and inputs
-    aROHR_all(i) = (gammaidk ./ (gammaidk - 1)) .* smoothpidk .* smoothdVdCaidk + (1 ./ (gammaidk - 1)) .* Vavgidk .* smoothdpdCaidk;
-
-end
-
-
+aROHR = zeros(1, length(Ca_single)); % Preallocate for speed, assuming numDatasets is defined
+% Compute aROHR using the interpolated gamma
+aROHR = (gamma_full ./ (gamma_full - 1)) .* smooth_p .* dVdCa(:,1) + ...
+        (1 ./ (gamma_full - 1)) .* V_cycle .*dpdCa;
 %% Plot aROHR
 
 disp('aROHR size is');
-disp(size(aROHR_all));
+disp(size(aROHR));
 
 %% Find the Indices for CaSOI and CaEVO
 Ca_single = Ca(:, 1); % Use the crank angle array (same for all cycles)
@@ -482,13 +544,13 @@ end
 
 % Slice data from CaSOI to CaEVO
 Ca_from_start = Ca_single(idx_start:idx_end); % Crank angle from CaSOI to CaEVO
-aROHR_from_start = aROHR_all(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
+aROHR_from_start = aROHR(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
 f3 = figure(3);
 figure;
 hold on; % Hold on to plot all datasets on the same figure
 for datasetIndex = 1:numLoads
-    plot(Ca_single, aROHR_all(1, :), 'DisplayName', 'Dataset 1');
-    plot(Ca_single, aROHR_all(1, :), 'DisplayName', sprintf('Dataset %d', datasetIndex));
+    plot(Ca_single, aROHR, 'DisplayName', 'Dataset 1');
+    plot(Ca_single, aROHR, 'DisplayName', sprintf('Dataset %d', datasetIndex));
     hold on; % Hold on to plot all datasets on the same figure
 end
 
@@ -514,7 +576,7 @@ end
 
 % Slice data from CaSOI to CaEVO
 Ca_from_start = Ca_single(idx_start:idx_end); % Crank angle from CaSOI to CaEVO
-aROHR_from_start = aROHR_all(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
+aROHR_from_start = aROHR(idx_start:idx_end);  % aROHR from CaSOI to CaEVO
 
 %% Perform Cumulative Integration
 aHR = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release

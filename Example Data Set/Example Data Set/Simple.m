@@ -761,7 +761,7 @@ mass_fraction_NOx = (emission_NOx * molar_NOx) / total_molar_mass;
 DensityCO2 = 1.98e3;                                %Density of CO2 at 20 degrees celcius (g/m^3)
 
 CO2_massflow = CO2/100*VolumeEmission*DensityCO2/100;
-NOx_massflow = NOx*46.01/24*VolumeEmission/100;
+NOx_massflow = NOx*(46.01*0.15+30.10*0.85)/24*VolumeEmission/100;
 
 %KPIs - x3600 to get to kWhr
 BSCO2_all = (CO2_massflow*3600)/Power_engine;

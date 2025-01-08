@@ -853,3 +853,28 @@ T2
 T3
 T4
 
+P4_2 = 100000; % 1 atm ambient pressure
+V_1 = CylinderVolume(CaIVC, Cyl);
+P4_1 = P3;
+
+% Initialize Cp_T4 and Cv_T4 arrays
+Cp_T4 = zeros(1, NSpS);
+Cv_T4 = zeros(1, NSpS);
+
+% Compute Cp_T4 and Cv_T4
+for i = 1:NSpS
+    Cp_T4(i) = CpNasa(T4, SpS(i));
+    Cv_T4(i) = CvNasa(T4, SpS(i));
+end
+
+% Compute Cp4, Cv4, and gamma_T4
+Cp4 = Yair .* Cp_T4; % Element-wise multiplication
+Cv4 = Yair .* Cv_T4; % Element-wise multiplication
+gamma_T4 = Cp_T4 ./ Cv_T4; % Element-wise division
+
+% Compute Volume_Final
+Volume_Final = (P4_1 .* V_1) ./ (P4_2 .* (P4_2 ./ P4_1).^((gamma_T3 - 1) ./ gamma_T3));
+
+% Display the result
+disp('Final volume');
+disp(Volume_Final);

@@ -1,4 +1,4 @@
-    function [V] = CylinderVolume(Ca,Cyl)
+    function [V, Vmin, Vdiff] = CylinderVolume(Ca,Cyl);
         % This function provides the cylinder volume as function of 
         % Ca : Crankangle [degrees]
         % Cyl :  a struct containing

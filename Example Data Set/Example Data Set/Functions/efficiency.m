@@ -13,7 +13,7 @@
 % e = W/Efuel;
 % end             
 
-function [e] = efficiency(m_fuel_cycle, selectedFuel, FuelTable, V_cycle, p_cycle, RPM)
+function [e] = efficiency(massflow_fuel, selectedFuel, FuelTable, V_cycle, p_cycle, RPM)
 
     %P =        load on engine
     %m_dot =    mass flow rate of the fuel 
@@ -24,7 +24,7 @@ LHV = FuelTable.LHV(strcmp(FuelTable.Fuel, selectedFuel));
 s = 120 / RPM; % 4-stroke: 2 revolutions per cycl
 Work = trapz(V_cycle,p_cycle,1); 
 
-Efuel = m_fuel_cycle*s*LHV;     %Energy content of the fuel  
+Efuel = massflow_fuel*s*LHV;     %Energy content of the fuel  
 
 e = Work ./ Efuel;
 end

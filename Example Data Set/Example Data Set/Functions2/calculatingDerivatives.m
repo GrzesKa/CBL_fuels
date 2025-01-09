@@ -1,4 +1,4 @@
-function [smooth_dVdCa, smooth_dpdCa, smooth_p, V_avg, Ca, p, V, Ca_single, NCa] = calculatingDerivatives(Ca_matrix, p_matrix, V_matrix, Ncycles)
+function [dVdCa, smooth_dpdCa, smooth_p, V_avg, Ca, p, V, Ca_single, NCa] = calculatingDerivatives(Ca_matrix, p_matrix, V_matrix, Ncycles)
 % Define variables
 Ca = Ca_matrix;       % Use all crank angle data
 p = p_matrix;         % Use all pressure data

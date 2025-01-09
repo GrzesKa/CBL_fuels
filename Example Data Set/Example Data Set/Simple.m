@@ -296,12 +296,9 @@ for i = 1:length(smooth_p)
     filtered_averaged_p(i) = filtered_averaged_p(i)-diff;
 end
 smooth_P=smooth_P(:);
-
 Ca_single = Ca(:, 1);
 dpdCa = zeros(size(Ca_single));
-
 dpdCa = gradient(smooth_P, Ca_single);
-
 dpdCa = sgolayfilt(dpdCa, 5, 37);
 
 f6 = figure(6);

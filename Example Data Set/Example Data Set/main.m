@@ -69,7 +69,7 @@ dataEmission = readtable(FullName);
 dataEmission.Properties.VariableNames = {'Load', 'InjectionTiming', 'CO', 'CO2', 'HC', 'O2', 'NOx'};
 
 %% Loop through all the data
-for p = 2:4
+for load = 2:4
 for T = 4:10
 
 timing = T*2;
@@ -77,7 +77,7 @@ timing = T*2;
 
 % for (go through folder)
 % Load dataset
-FullName        = fullfile('Data','ExampleDataSet.txt'); % choose one  file in folder, after executed choose next one etc.
+FullName = fullfile(sprintf('Data/EXP%d/EXP%d/T%d',EXP, EXP, timing), sprintf('P%dT%d.txt', load,timing)); % choose one  file in folder, after executed choose next one etc.
 dataIn = table2array(readtable(FullName));
 
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
@@ -116,15 +116,21 @@ m_per_cycle = m_fuel_cumm/Ncycles;
 W_per_cycle = W_cumm/Ncycles; %Average work
 
 %Taking data out of emmision data table
-EmissionLoadIndex = (p-1)*20+10;
+EmissionLoadIndex = (load-1)*20+10;
 filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
 avgCO2 = mean(filteredRows.CO2)
 avgNOx = mean(filteredRows.NOx)
 VolumeEmission = CylinderVolume(CaEVO,Cyl);         %Cylinder volume when exhaust valve opens
 %Calculates the KPI for each loaded file and adds it to an array
-[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission);
+
+%% Calculating derivatives
+[dVdCa, smooth_dpdCa, smooth_p, V_avg, Ca, p, V, Ca_single, NCa] = calculatingDerivatives(Ca_matrix, p_matrix, V_matrix, Ncycles);
+
+[smooth_P,dpdCa] = Pegging_dpdCa(smooth_p,NCa, Ca)
+
+[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p);
 KPI_index_injection = T-3;
-KPI_index_load = p-1;
+KPI_index_load = load-1;
 Efficiency(KPI_index_load,KPI_index_injection) = Efficiency_all;
 BSCO2(KPI_index_load,KPI_index_injection) = BSCO2_all;
 BSNOx(KPI_index_load,KPI_index_injection) = BSNOx_all;
@@ -144,8 +150,6 @@ end
 %% Plot all cycles
 Pressure_Crankangle(Ca_matrix, p_matrix, bara, CaIVC, CaEVO, 10);
 
-%% Calculating derivatives
-[smooth_dVdCa, smooth_dpdCa, smooth_p, V_avg, Ca, p, V, Ca_single, NCa] = calculatingDerivatives(Ca_matrix, p_matrix, V_matrix, Ncycles);
 
 %% Plot average Pressure
 plotAveragePressure(V_matrix, smooth_p, dm, bara, 10);
@@ -157,7 +161,7 @@ plotAveragePressure(V_matrix, smooth_p, dm, bara, 10);
 [Gamma_at_angle] = calculateGamma(Ca_2to3, mfuel, mtot, Elcompfuel, SpS, Mi, FuelTable, LHV, Ymix, Runiv, T, NSpS, T_curr, Yair, Vmin, Vdiff, CaIVC, Cyl, Ca_single, V_cycle, smooth_P);
 
 %% Compute aROHR
-[aROHR_all, aROHR] = computeAROHR(Ca, Gamma_at_angle, smooth_p, V_avg, smooth_dVdCa, smooth_dpdCa)
+ aROHR = computeAROHR(Ca, Gamma_at_angle, smooth_p, V_cycle, dVdCa, dpdCa)
 
 %% Plot aROHR
 f4 = figure(4);
@@ -168,20 +172,11 @@ ylabel('aROHR [J/°CA]');
 legend()
 xlim([-45 135]);
 grid on;
-title('Apparent Rate of Heat Release (aROHR) vs Crank Angle, arbitrary gamma');
-
-f5 = figure(5);
-set(f5, 'Position', [400 400 800 400]); % Figure size
-plot(Ca(:, 1), aROHR_all, 'LineWidth', 1); % Plot averaged aROHR
-xlabel('Crank Angle (°)');
-ylabel('aROHR [J/°CA]');
-legend()
-xlim([-45 135]);
-grid on;
 title('Apparent Rate of Heat Release (aROHR) vs Crank Angle, changing gamma');
 
+
 %% Find the Indices for CaSOI and CaEVO
-[Ca_from_start, aROHR_from_start] = indices(Ca, aROHR_all, CaSOI, CaEVO, numLoads, aROHR)
+[Ca_from_start, aROHR_from_start] = indices(Ca, aROHR, CaSOI, CaEVO, numLoads, aROHR)
 
 %% Perform Cumulative Integration
 aHR = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release

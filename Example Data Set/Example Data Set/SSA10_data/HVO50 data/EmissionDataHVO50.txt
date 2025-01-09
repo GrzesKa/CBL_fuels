@@ -1,0 +1,8 @@
+Load % | Injection Timing [-Degrees] | CO vol% | CO2 vol% | HC ppm | O2 vol% | NOx ppm
+50 14 0 2.54 0 17.24 653
+50 16 0 1.56 0 18.7 456
+50 18 0 2.58 0 17.16 1162
+50 20 0 2.50 0 17.39 807
+
+
+

@@ -77,7 +77,8 @@ timing = T*2;
 
 
 % Load dataset
-FullName        = fullfile('Data','ExampleDataSet.txt');
+%FullName            = fullfile('Data','ExampleDataSet.txt');
+FullName            = fullfile(sprintf('Data/EXP1/EXP1/T20'), sprintf('P3T20.txt'));
 dataIn = table2array(readtable(FullName));
 
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array

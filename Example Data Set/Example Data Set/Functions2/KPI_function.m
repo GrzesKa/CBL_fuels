@@ -1,7 +1,7 @@
 function [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,CO2, NOx,VolumeEmission,FuelTable,selectedFuel,smooth_P)
 
 RPM = 1500 ; % Rotations Per Minute of engine
-massflow_fuel = 0.2; % kg/s
+massflow_fuel = 0.0002; % kg/s
 Power_engine = (W_per_cycle*RPM)/120;
 
 

@@ -15,7 +15,7 @@ xlabel('Injection timing (-)');
 ylabel('Efficiency (-)');
 
 ylim([0,1]); % Adjust y-axis limits
-title('Efficiency at Various Loads');
+title('Efficiency');
 
 % Optional: Adjust appearance
 grid on; % Add a grid for better readability
@@ -36,7 +36,7 @@ xlabel('Injection timing (-)');
 ylabel('BSCO2 (g/KWhr)');
 
 
-title('BSCO2 at Various Loads');
+title('BSCO2');
 
 % Optional: Adjust appearance
 grid on; % Add a grid for better readability
@@ -57,7 +57,7 @@ xlabel('Injection timing (-)');
 ylabel('BSNOx (mg/KWhr)');
 
 %ylim([0,1]); % Adjust y-axis limits
-title('BSNox at Various Loads');
+title('BSNox');
 
 % Optional: Adjust appearance
 grid on; % Add a grid for better readability
@@ -79,7 +79,7 @@ xlabel('Injection timing (-)');
 ylabel('BSCFC (g/KWhr)');
 
 %ylim([0,1]); % Adjust y-axis limits
-title('BSFC at Various Loads');
+title('BSFC');
 
 % Optional: Adjust appearance
 grid on; % Add a grid for better readability

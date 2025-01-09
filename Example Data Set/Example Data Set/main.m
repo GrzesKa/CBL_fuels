@@ -75,9 +75,9 @@ for T = 4:10
 timing = T*2;
 % Emmision dataset sorting
 
-
+% for (go through folder)
 % Load dataset
-FullName        = fullfile('Data','ExampleDataSet.txt');
+FullName        = fullfile('Data','ExampleDataSet.txt'); % choose one  file in folder, after executed choose next one etc.
 dataIn = table2array(readtable(FullName));
 
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
@@ -130,6 +130,8 @@ BSCO2(KPI_index_load,KPI_index_injection) = BSCO2_all;
 BSNOx(KPI_index_load,KPI_index_injection) = BSNOx_all;
 BSFC(KPI_index_load,KPI_index_injection) = BSFC_all;
 injections(KPI_index_injection) = T*2;
+
+% save to struct or smthg data(i) 
 end
 end
 

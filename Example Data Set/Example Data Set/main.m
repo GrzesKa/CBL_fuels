@@ -115,18 +115,21 @@ m_fuel_cumm = sum(m_fuel_cycle);
 m_per_cycle = m_fuel_cumm/Ncycles;
 W_per_cycle = W_cumm/Ncycles; %Average work
 
-%Taking data out of emmision data table
-EmissionLoadIndex = (load-1)*20+10;
-filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
-avgCO2 = mean(filteredRows.CO2)
-avgNOx = mean(filteredRows.NOx)
-VolumeEmission = CylinderVolume(CaEVO,Cyl);         %Cylinder volume when exhaust valve opens
-%Calculates the KPI for each loaded file and adds it to an array
 
 %% Calculating derivatives
 [dVdCa, smooth_dpdCa, smooth_p, V_avg, Ca, p, V, Ca_single, NCa] = calculatingDerivatives(Ca_matrix, p_matrix, V_matrix, Ncycles);
 
 [smooth_P,dpdCa] = Pegging_dpdCa(smooth_p,NCa, Ca)
+
+%Taking data out of emmision data table
+EmissionLoadIndex = (load-1)*20+10;
+filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
+avgCO2 = mean(filteredRows.CO2)
+avgNOx = mean(filteredRows.NOx)
+VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P)         %Cylinder volume when exhaust valve opens
+%Calculates the KPI for each loaded file and adds it to an array
+
+
 
 [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p);
 KPI_index_injection = T-3;

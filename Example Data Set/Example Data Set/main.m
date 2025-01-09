@@ -77,7 +77,8 @@ timing = T*2;
 
 % for (go through folder)
 % Load dataset
-FullName = fullfile(sprintf('Data/EXP%d/EXP%d/T%d',EXP, EXP, timing), sprintf('P%dT%d.txt', load,timing)); % choose one  file in folder, after executed choose next one etc.
+FullName            = fullfile('Data','ExampleDataSet.txt');
+%FullName = fullfile(sprintf('Data/EXP%d/EXP%d/T%d',EXP, EXP, timing), sprintf('P%dT%d.txt', load,timing)); % choose one  file in folder, after executed choose next one etc.
 dataIn = table2array(readtable(FullName));
 
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array

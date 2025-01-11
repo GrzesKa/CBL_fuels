@@ -74,7 +74,7 @@ for i = 1:length(Ca)
     end
    
 
-    T_curr = P_curr * V_curr / (R_air * mAir); % Temperature using ideal gas law [pV=nRT]
+    T_curr = P_curr * V_curr / (R * (mAir/28.9647)); % Temperature using ideal gas law [pV=nRT]
     T(i) = T_curr; % Store temperature
 end
 

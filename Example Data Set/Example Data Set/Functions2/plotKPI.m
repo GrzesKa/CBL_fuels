@@ -1,13 +1,14 @@
 function plotKPIBarGraphs(injections, Efficiency, BSCO2, BSNOx, BSFC)
-% Define the loads and efficiency values
-loads = [2, 3, 4];        % Numeric values for loads (in bar)
+% Define the loads and efficiency valuesinjections
 
-for i=1:3
-load = i+1;
+%loads = [2, 3, 4];        % Numeric values for loads (in bar)
+%for i=1:3
+%load = i+1;
+
 % Creates the bar graph for the Efficiency KPI
 figure;
 subplot(2, 2, 1);
-bar(injections, Efficiency(i,:), 'FaceColor', [0.2, 0.6, 0.8]);
+bar(injections, Efficiency, 'FaceColor', [0.2, 0.6, 0.8]);
 
 % Add labels and title
 %xlabel('Loads (bar)');
@@ -28,7 +29,7 @@ grid on; % Add a grid for better readability
 
 % Creates the bar graph of BSCO2 KPI
 subplot(2, 2, 2);
-bar(injections, BSCO2(i,:), 'FaceColor', [1, 0.5, 0]);
+bar(injections, BSCO2, 'FaceColor', [1, 0.5, 0]);
 
 % Add labels and title
 %xlabel('Loads (bar)');
@@ -49,7 +50,7 @@ grid on; % Add a grid for better readability
 
 % Creates the bar graph of BSNOx KPI
 subplot(2, 2, 3);
-bar(injections, BSNOx(i,:), 'FaceColor', [0.4, 0.7, 0.3]);
+bar(injections, BSNOx, 'FaceColor', [0.4, 0.7, 0.3]);
 
 % Add labels and title
 %xlabel('Loads (bar)');
@@ -71,7 +72,7 @@ grid on; % Add a grid for better readability
 
 % Creates the bar graph of BSFC KPI
 subplot(2, 2, 4);
-bar(injections, BSFC(i,:), 'FaceColor', [1, 0, 0]);
+bar(injections, BSFC, 'FaceColor', [1, 0, 0]);
 
 % Add labels and title
 %xlabel('Loads (bar)');
@@ -88,6 +89,6 @@ grid on; % Add a grid for better readability
     ax.LineWidth = 1.2; % Make axis lines slightly thicker
     ax.FontSize = 10; % Adjust font size for axis labels and ticks
     ax.FontWeight = 'bold'; % Make axis labels bold
-sgtitle(sprintf('KPIs for load %d', load), 'FontSize', 12, 'FontWeight', 'bold');
+sgtitle(sprintf('KPIs for load 50%'), 'FontSize', 12, 'FontWeight', 'bold');
 hold off;
 end

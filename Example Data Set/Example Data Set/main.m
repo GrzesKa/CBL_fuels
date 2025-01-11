@@ -60,25 +60,28 @@ CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXP
 %% Preallocate results structure
 numLoads = 3;
 EXP = 1; %Choose which experiment you want to load
+fuel = 'Diesel100';
+
+DataSetTimings = DataSetCheck(fuel)
+
 results = struct ( 'Work', [], 'BSFC', [], 'Efficiency', [], 'aROHR', [], 'CumulativeHR', []) ;
 
 %% Emission data
 
-FullName = fullfile(sprintf('Data/EXP%d/EXP%d',EXP, EXP), sprintf('EmissionDataDiesel.txt')); % Adjust file naming as needed
+FullName = fullfile(sprintf('Data/SSA12_all_data_ready/%s data',fuel), sprintf('EmissionData%s.txt',fuel)); % Adjust file naming as needed
 dataEmission = readtable(FullName);
 dataEmission.Properties.VariableNames = {'Load', 'InjectionTiming', 'CO', 'CO2', 'HC', 'O2', 'NOx'};
 
 %% Loop through all the data
-for load = 2:4
-for T = 4:10
 
-timing = T*2;
+for T = 1:length(DataSetTimings)
+    timing = DataSetTimings(T);
 % Emmision dataset sorting
 
 % for (go through folder)
 % Load dataset
 %FullName            = fullfile('Data','ExampleDataSet.txt');
-FullName = fullfile(sprintf('Data/EXP%d/EXP%d/T%d',EXP, EXP, timing), sprintf('P%dT%d.txt', load,timing)); % choose one  file in folder, after executed choose next one etc.
+FullName = fullfile(sprintf('Data/SSA12_all_data_ready/%s data/%sPressureData',fuel,fuel), sprintf('%s_CA%d.txt',fuel,timing)); % choose one  file in folder, after executed choose next one etc.
 dataIn = table2array(readtable(FullName));
 
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array
@@ -123,7 +126,7 @@ W_per_cycle = W_cumm/Ncycles; %Average work
 [smooth_P,dpdCa] = Pegging_dpdCa(smooth_p,NCa, Ca);
 
 %Taking data out of emmision data table
-EmissionLoadIndex = (load-1)*20+10;
+EmissionLoadIndex = 50;
 filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
 avgCO2 = mean(filteredRows.CO2);
 avgNOx = mean(filteredRows.NOx);
@@ -133,17 +136,16 @@ VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P)         %Cylinder volume 
 
 
 [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p);
-KPI_index_injection = T-3;
-KPI_index_load = load-1;
-Efficiency(KPI_index_load,KPI_index_injection) = Efficiency_all;
-BSCO2(KPI_index_load,KPI_index_injection) = BSCO2_all;
-BSNOx(KPI_index_load,KPI_index_injection) = BSNOx_all;
-BSFC(KPI_index_load,KPI_index_injection) = BSFC_all;
-injections(KPI_index_injection) = T*2;
+KPI_index_injection = timing;
+Efficiency(T) = Efficiency_all;
+BSCO2(T) = BSCO2_all;
+BSNOx(T) = BSNOx_all;
+BSFC(T) = BSFC_all;
+injections(T) = DataSetTimings(T);
 
 % save to struct or smthg data(i) 
 end
-end
+
 
 %% Mass flow
 [W_per_cycle, m_per_cycle, V_avg, mass_flow_fuel_cycle, AFR] = calculateMassflow(Cyl, RPM, selectedFuel, FuelTable, V_cycle, m_fuel_cycle, W_all);
@@ -180,7 +182,7 @@ title('Apparent Rate of Heat Release (aROHR) vs Crank Angle, changing gamma');
 
 
 %% Find the Indices for CaSOI and CaEVO
-[Ca_from_start, aROHR_from_start] = indices(Ca, aROHR, CaSOI, CaEVO, numLoads, aROHR);
+[Ca_from_start, aROHR_from_start] = indices(Ca, CaSOI, CaEVO, aROHR);
 
 %% Perform Cumulative Integration
 aHR = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release

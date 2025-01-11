@@ -68,7 +68,7 @@ results = struct ( 'Work', [], 'BSFC', [], 'Efficiency', [], 'aROHR', [], 'Cumul
 
 %% Emission data
 
-FullName = fullfile(sprintf('Data/SSA12_all_data_ready/%s data',fuel), sprintf('EmissionData%s.txt',fuel)); % Adjust file naming as needed
+FullName = fullfile(sprintf('Data/FinalDataSet/%s data',fuel), sprintf('EmissionData%s.txt',fuel)); % Adjust file naming as needed
 dataEmission = readtable(FullName);
 dataEmission.Properties.VariableNames = {'Load', 'InjectionTiming', 'CO', 'CO2', 'HC', 'O2', 'NOx'};
 
@@ -81,7 +81,7 @@ for T = 1:length(DataSetTimings)
 % for (go through folder)
 % Load dataset
 %FullName            = fullfile('Data','ExampleDataSet.txt');
-FullName = fullfile(sprintf('Data/SSA12_all_data_ready/%s data/%sPressureData',fuel,fuel), sprintf('%s_CA%d.txt',fuel,timing)); % choose one  file in folder, after executed choose next one etc.
+FullName = fullfile(sprintf('Data/FinalDataSet/%s data/%sPressureData',fuel,fuel), sprintf('%s_CA%d.txt',fuel,timing)); % choose one  file in folder, after executed choose next one etc.
 dataIn = table2array(readtable(FullName));
 
 [Nrows,Ncols]       = size(dataIn);                    % Determine size of array

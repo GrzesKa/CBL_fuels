@@ -29,4 +29,4 @@ ylim([min(aHR) - 100, max(aHR) + 100]); % Adjust y-axis limits
 grid on;
 hold off;
 
-pbdx = p(idx_BDC)
+pbdx = p(idx_BDC);

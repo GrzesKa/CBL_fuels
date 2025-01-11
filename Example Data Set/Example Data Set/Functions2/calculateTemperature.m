@@ -1,4 +1,4 @@
-function [T, smooth_P, Ca_2to3, mfuel, mtot, Elcompfuel, Mi, LHV, Ymix, NSpS, T_curr, Yair, AF] = calculateTemperature(Ca, smooth_p, Cyl, SpS, FuelTable, V_cycle, CaIVC, Ca_single)
+function [T, smooth_P, Ca_2to3, mfuel, mtot, Elcompfuel, Mi, LHV, Ymix, NSpS, T_curr, Yair, AF, minimumsmooth_P] = calculateTemperature(Ca, smooth_p, Cyl, SpS, FuelTable, V_cycle, CaIVC, Ca_single)
 desired_value = 1e5;
 % Pegging at 1 bar at BDC
 for i = 1:length(smooth_p)
@@ -9,6 +9,11 @@ for i = 1:length(smooth_p)
     smooth_P(i) = smooth_p(i) - diff;
 end
 smooth_P=smooth_P(:);
+
+min_value = 100000;
+
+minimumsmooth_P = max (smooth_P, min_value);
+
 
 
 Vmin = min(V_cycle(:)); %Find the smallest value from the Volume matrix
@@ -52,10 +57,15 @@ T(1) = T_initial; % Set initial temperature
 % Corrected specific gas constant for air
 R_air = R / MAir; % J/(kg*K)
 
+
+CaIVC = -135;  %Intake valve closes
+CaEVO = 149;   %Exhaust valve opens
+
+
 % Corrected temperature calculation
 for i = 1:length(Ca)
     V_curr = CylinderVolume(Ca(i), Cyl); % Volume at current crank angle
-    P_curr = smooth_P(i); % Pressure at current crank angle
+    P_curr = minimumsmooth_P(i); % Pressure at current crank angle
     
     % Check for valid V_curr and P_curr
     if V_curr <= 0

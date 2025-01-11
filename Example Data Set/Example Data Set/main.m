@@ -120,13 +120,13 @@ W_per_cycle = W_cumm/Ncycles; %Average work
 %% Calculating derivatives
 [dVdCa, smooth_dpdCa, smooth_p, V_avg, Ca, p, V, Ca_single, NCa] = calculatingDerivatives(Ca_matrix, p_matrix, V_matrix, Ncycles);
 
-[smooth_P,dpdCa] = Pegging_dpdCa(smooth_p,NCa, Ca)
+[smooth_P,dpdCa] = Pegging_dpdCa(smooth_p,NCa, Ca);
 
 %Taking data out of emmision data table
 EmissionLoadIndex = (load-1)*20+10;
 filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
-avgCO2 = mean(filteredRows.CO2)
-avgNOx = mean(filteredRows.NOx)
+avgCO2 = mean(filteredRows.CO2);
+avgNOx = mean(filteredRows.NOx);
 VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P)         %Cylinder volume when exhaust valve opens
 %Calculates the KPI for each loaded file and adds it to an array
 
@@ -159,13 +159,13 @@ Pressure_Crankangle(Ca_matrix, p_matrix, bara, CaIVC, CaEVO, 10);
 plotAveragePressure(V_matrix, smooth_p, dm, bara, 10);
 
 %% Calculates temperature in engine
-[T, smooth_P, Ca_2to3, mfuel, mtot, Elcompfuel, Mi, LHV, Ymix, NSpS, T_curr, Yair, AF] = calculateTemperature(Ca, smooth_p, Cyl, SpS, FuelTable, V_cycle, CaIVC, Ca_single)
+[T, smooth_P, Ca_2to3, mfuel, mtot, Elcompfuel, Mi, LHV, Ymix, NSpS, T_curr, Yair, AF] = calculateTemperature(Ca, smooth_p, Cyl, SpS, FuelTable, V_cycle, CaIVC, Ca_single);
 
 %% Gamma Calculation
 [Gamma_at_angle] = calculateGamma(Ca_2to3, mfuel, mtot, Elcompfuel, SpS, Mi, FuelTable, LHV, Ymix, Runiv, T, NSpS, T_curr, Yair, Vmin, Vdiff, CaIVC, Cyl, Ca_single, V_cycle, smooth_P);
 
 %% Compute aROHR
- aROHR = computeAROHR(Ca, Gamma_at_angle, smooth_p, V_cycle, dVdCa, dpdCa)
+ aROHR = computeAROHR(Ca, Gamma_at_angle, smooth_p, V_cycle, dVdCa, dpdCa);
 
 %% Plot aROHR
 f4 = figure(4);
@@ -180,7 +180,7 @@ title('Apparent Rate of Heat Release (aROHR) vs Crank Angle, changing gamma');
 
 
 %% Find the Indices for CaSOI and CaEVO
-[Ca_from_start, aROHR_from_start] = indices(Ca, aROHR, CaSOI, CaEVO, numLoads, aROHR)
+[Ca_from_start, aROHR_from_start] = indices(Ca, aROHR, CaSOI, CaEVO, numLoads, aROHR);
 
 %% Perform Cumulative Integration
 aHR = cumtrapz(Ca_from_start, aROHR_from_start); % Cumulative heat release

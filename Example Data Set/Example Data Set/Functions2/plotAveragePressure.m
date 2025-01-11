@@ -10,7 +10,7 @@ function plotAveragePressure(V_matrix, smooth_p, dm, bara, iselect)
 
     % Extract data for the selected cycle
     V_cycle = V_matrix(:, iselect);
-    p_cycle = smooth_p
+    p_cycle = smooth_p;
 
     % Create and configure figure
     f2 = figure;

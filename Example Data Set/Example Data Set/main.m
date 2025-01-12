@@ -92,8 +92,8 @@ Ca              = reshape(dataIn(:,1),[],Ncycles);
 [V, Vmin, Vdiff] = CylinderVolume(Ca,Cyl);
 
 % Check the size of matrix matches
-disp(['Rows in dataIn: ', num2str(Nrows)]);
-disp(['Expected rows (NdatapointsperCycle * Ncycles): ', num2str(NdatapointsperCycle * Ncycles)]);
+% disp(['Rows in dataIn: ', num2str(Nrows)]);
+% disp(['Expected rows (NdatapointsperCycle * Ncycles): ', num2str(NdatapointsperCycle * Ncycles)]);
 
 Ca_matrix           = reshape(dataIn(:,1),NdatapointsperCycle,Ncycles);      % Both p and Ca are now matrices of size (NCa,Ncycles)
 p_matrix            = reshape(dataIn(:,2),NdatapointsperCycle,Ncycles)*bara; % This forms the Matrix For the p values for each Ca per cycle and converts the pressure to SI units 
@@ -124,26 +124,7 @@ W_per_cycle = W_cumm/Ncycles; %Average work
 [dVdCa, smooth_dpdCa, smooth_p, V_avg, Ca, p, V, Ca_single, NCa] = calculatingDerivatives(Ca_matrix, p_matrix, V_matrix, Ncycles);
 
 [smooth_P,dpdCa] = Pegging_dpdCa(smooth_p,NCa, Ca);
-
-%Taking data out of emmision data table
-EmissionLoadIndex = 50;
-filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
-avgCO2 = mean(filteredRows.CO2);
-avgNOx = mean(filteredRows.NOx);
-VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P)         %Cylinder volume when exhaust valve opens
-%Calculates the KPI for each loaded file and adds it to an array
-
-
-
-[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p);
-KPI_index_injection = timing;
-Efficiency(T) = Efficiency_all;
-BSCO2(T) = BSCO2_all;
-BSNOx(T) = BSNOx_all;
-BSFC(T) = BSFC_all;
-injections(T) = DataSetTimings(T);
-
-% save to struct or smthg data(i) 
+%rest of this was moved to "testing loop split"
 end
 
 
@@ -165,6 +146,33 @@ plotAveragePressure(V_matrix, smooth_p, dm, bara, 10);
 
 %% Gamma Calculation
 [Gamma_at_angle] = calculateGamma(Ca_2to3, mfuel, mtot, Elcompfuel, SpS, Mi, FuelTable, LHV, Ymix, Runiv, T, NSpS, T_curr, Yair, Vmin, Vdiff, CaIVC, Cyl, Ca_single, V_cycle, smooth_P);
+
+%% testing loop split
+
+%The contents of this for loop was taken from under the "calculating
+%derivatives" section
+
+for T = 1:length(DataSetTimings)
+    timing = DataSetTimings(T);
+    
+%Taking data out of emmision data table
+EmissionLoadIndex = 50;
+filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
+avgCO2 = mean(filteredRows.CO2);
+avgNOx = mean(filteredRows.NOx);
+VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P, Gamma_at_angle)         %Cylinder volume when exhaust valve opens
+%Calculates the KPI for each loaded file and adds it to an array
+
+[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p);
+KPI_index_injection = timing;
+Efficiency(T) = Efficiency_all;
+BSCO2(T) = BSCO2_all;
+BSNOx(T) = BSNOx_all;
+BSFC(T) = BSFC_all;
+injections(T) = DataSetTimings(T);
+
+% save to struct or smthg data(i) 
+end
 
 %% Compute aROHR
  aROHR = computeAROHR(Ca, Gamma_at_angle, smooth_p, V_cycle, dVdCa, dpdCa);

@@ -91,7 +91,7 @@ for i = 1:length(Ca)
     end
 
     % Calculate temperature using the ideal gas law
-    T_curr = T_initial + (P_curr * V_curr / (R * (mAir / 28.9647))); % [K]
+    T_curr = P_curr * V_curr / (R * (mAir / 28.9647)); % [K]
     T(i) = T_curr; % Store temperature
     last_valid_temperature = T_curr; % Update the last valid temperature
 end

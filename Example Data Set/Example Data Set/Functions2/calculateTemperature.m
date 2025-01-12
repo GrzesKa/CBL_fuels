@@ -61,30 +61,46 @@ R_air = R / MAir; % J/(kg*K)
 CaIVC = -135;  %Intake valve closes
 CaEVO = 149;   %Exhaust valve opens
 
+% Corrected temperature calculation (only between CaIVC and CaEVO)
+last_valid_temperature = NaN; % Initialize a variable to store the last valid temperature
 
-% Corrected temperature calculation
 for i = 1:length(Ca)
-    V_curr = CylinderVolume(Ca(i), Cyl); % Volume at current crank angle
-    P_curr = minimumsmooth_P(i); % Pressure at current crank angle
     
-    % Check for valid V_curr and P_curr
+    if Ca(i) < CaIVC
+        T(i) = 293; % Set temperature to 273 K before the intake valve closes
+        continue;   % Skip the remaining calculations for this iteration
+    end
+
+    % Check if the crank angle is after the exhaust valve opens
+    if Ca(i) > CaEVO
+        T(i) = last_valid_temperature; % Set to the last calculated temperature
+        continue;   % Skip the remaining calculations for this iteration
+    end
+
+    % Calculate current cylinder volume
+    V_curr = CylinderVolume(Ca(i), Cyl); % Volume at current crank angle
+    
+    % Fetch current pressure
+    P_curr = minimumsmooth_P(i); % Pressure at current crank angle
+
+    % Check for valid volume
     if V_curr <= 0
         warning('Invalid volume at index %d: %f. Skipping...', i, V_curr);
+        T(i) = NaN; % Set temperature to NaN for invalid volumes
         continue;
     end
-   
 
-    T_curr = P_curr * V_curr / (R * (mAir/28.9647)); % Temperature using ideal gas law [pV=nRT]
+    % Calculate temperature using the ideal gas law
+    T_curr = T_initial + (P_curr * V_curr / (R * (mAir / 28.9647))); % [K]
     T(i) = T_curr; % Store temperature
+    last_valid_temperature = T_curr; % Update the last valid temperature
 end
 
-
-
-% Plotting Temperature vs Crank Angle
+% Plotting the temperature vs crank angle
 figure(6);
 plot(Ca, T, 'LineWidth', 1.5);
 xlabel('Crank Angle (°)');
 ylabel('Temperature [K]');
 xlim([-180 180]);
-title('Cylinder Temperature vs Crank Angle');
+title('Cylinder Temperature vs Crank Angle (Last Valid Temperature After Exhaust)');
 grid on;

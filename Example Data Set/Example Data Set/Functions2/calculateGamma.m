@@ -46,8 +46,8 @@ for i = 1:length(Ca_single)
 
 
     
-
-    T_curr = P_curr * V_curr / (R_air * mAir); % Temperature using ideal gas law [pV=nRT]
+    %T_initial = 293 
+    %T_curr = T_initial + (P_curr * V_curr / (R_air * mAir)); % Temperature using ideal gas law [pV=nRT]
     T(i) = T_curr; % Store temperature
     % Calculate Cp and Cv for the current temperature (Sander's new code)
     for j = 1:NSpS

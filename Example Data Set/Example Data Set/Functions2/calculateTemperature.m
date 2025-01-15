@@ -1,14 +1,5 @@
-function [T, smooth_P, Ca_2to3, mfuel, mtot, Elcompfuel, Mi, LHV, Ymix, NSpS, T_curr, Yair, AF, minimumsmooth_P] = calculateTemperature(Ca, smooth_p, Cyl, SpS, FuelTable, V_cycle, CaIVC, Ca_single)
-desired_value = 1e5;
-% Pegging at 1 bar at BDC
-for i = 1:length(smooth_p)
-    % Calculate the difference between the original first value and the adjusted BDC value
-    diff = smooth_p(180) - desired_value;
-    
-    % Adjust the current element by adding the calculated difference
-    smooth_P(i) = smooth_p(i) - diff;
-end
-smooth_P=smooth_P(:);
+function [T, Ca_2to3, mfuel, mtot, Elcompfuel, Mi, LHV, Ymix, NSpS, T_curr, Yair, AF, minimumsmooth_P] = calculateTemperature(Ca, smooth_P, Cyl, SpS, FuelTable, V_cycle, CaIVC, Ca_single)
+
 
 min_value = 100000;
 

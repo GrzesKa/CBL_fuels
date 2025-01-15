@@ -23,10 +23,5 @@ BSCO2_all =CO2_massflow/Power_engine;
 BSNOx_all = NOx_massflow/Power_engine;
 BSFC_all = massflow_fuel*s*1000/Power_engine;
 
-disp(['Efficiency_all:', num2str(Efficiency_all)]);
-disp(['BSCO2_all:', num2str(BSCO2_all), 'g/kWhr']);
-disp(['BSNOx_all:', num2str(BSNOx_all), 'g/kWhr']);
-disp(['BSFC_all:', num2str(BSFC_all), 'g/kWhr']);
-
 
 end

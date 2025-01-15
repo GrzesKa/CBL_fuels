@@ -90,8 +90,8 @@ dataEmission.Properties.VariableNames = {'Load', 'InjectionTiming', 'CO', 'CO2',
 
 %% Loop through all the data
 
-for T = 1:length(DataSetTimings)
-    timing = DataSetTimings(T);
+for TimingIndex = 1:length(DataSetTimings)
+    timing = DataSetTimings(TimingIndex);
 % Emmision dataset sorting
 
 % for (go through folder)
@@ -142,6 +142,31 @@ W_per_cycle = W_cumm/Ncycles; %Average work
 [smooth_P,dpdCa] = Pegging_dpdCa(smooth_p,NCa, Ca);
 %rest of this was moved to "testing loop split"
 
+%Taking data out of emmision data table
+EmissionLoadIndex = 50;
+filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
+avgCO2 = mean(filteredRows.CO2);
+avgNOx = mean(filteredRows.NOx);
+VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P) ;        %Cylinder volume when exhaust valve opens
+%Calculates the KPI for each loaded file and adds it to an array
+
+[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p) ;
+KPI_index_injection = TimingIndex;
+Efficiency(TimingIndex) = Efficiency_all;
+BSCO2(TimingIndex) = BSCO2_all;
+BSNOx(TimingIndex) = BSNOx_all;
+BSFC(TimingIndex) = BSFC_all;
+injections(TimingIndex) = DataSetTimings(TimingIndex);
+
+
+% save to struct or smthg data(i) 
+
+%% Calculates temperature in engine
+[T, Ca_2to3, mfuel, mtot, Elcompfuel, Mi, LHV, Ymix, NSpS, T_curr, Yair, AF] = calculateTemperature(Ca, smooth_P, Cyl, SpS, FuelTable, V_cycle, CaIVC, Ca_single);
+
+%% Gamma Calculation
+[Gamma_at_angle] = calculateGamma(Ca_2to3, mfuel, mtot, Elcompfuel, SpS, Mi, FuelTable, LHV, Ymix, Runiv, T, NSpS, T_curr, Yair, Vmin, Vdiff, CaIVC, Cyl, Ca_single, V_cycle, smooth_P);
+
 %% aROHR selection data saving
 if timing == chosen_aROHR
     Ca_saved = Ca;
@@ -171,39 +196,35 @@ Pressure_Crankangle(Ca_matrix, p_matrix, bara, CaIVC, CaEVO, 10);
 %% Plot average Pressure
 plotAveragePressure(V_matrix, smooth_p, dm, bara, 10);
 
-%% Calculates temperature in engine
-[T, smooth_P, Ca_2to3, mfuel, mtot, Elcompfuel, Mi, LHV, Ymix, NSpS, T_curr, Yair, AF] = calculateTemperature(Ca, smooth_p, Cyl, SpS, FuelTable, V_cycle, CaIVC, Ca_single);
 
-%% Gamma Calculation
-[Gamma_at_angle] = calculateGamma(Ca_2to3, mfuel, mtot, Elcompfuel, SpS, Mi, FuelTable, LHV, Ymix, Runiv, T, NSpS, T_curr, Yair, Vmin, Vdiff, CaIVC, Cyl, Ca_single, V_cycle, smooth_P);
 
 %% testing loop split
 
 %The contents of this for loop was taken from under the "calculating
 %derivatives" section
-
-for T = 1:length(DataSetTimings)
-    timing = DataSetTimings(T);
-    
-%Taking data out of emmision data table
-EmissionLoadIndex = 50;
-filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
-avgCO2 = mean(filteredRows.CO2);
-avgNOx = mean(filteredRows.NOx);
-VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P, Gamma_at_angle) ;        %Cylinder volume when exhaust valve opens
-%Calculates the KPI for each loaded file and adds it to an array
-
-[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p) ;
-KPI_index_injection = timing;
-Efficiency(T) = Efficiency_all;
-BSCO2(T) = BSCO2_all;
-BSNOx(T) = BSNOx_all;
-BSFC(T) = BSFC_all;
-injections(T) = DataSetTimings(T);
-
-
-% save to struct or smthg data(i) 
-end
+% 
+% for TimingIndex = 1:length(DataSetTimings)
+%     timing = DataSetTimings(TimingIndex);
+% 
+% %Taking data out of emmision data table
+% EmissionLoadIndex = 50;
+% filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
+% avgCO2 = mean(filteredRows.CO2);
+% avgNOx = mean(filteredRows.NOx);
+% VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P, Gamma_at_angle) ;        %Cylinder volume when exhaust valve opens
+% %Calculates the KPI for each loaded file and adds it to an array
+% 
+% [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p) ;
+% KPI_index_injection = TimingIndex;
+% Efficiency(TimingIndex) = Efficiency_all;
+% BSCO2(TimingIndex) = BSCO2_all;
+% BSNOx(TimingIndex) = BSNOx_all;
+% BSFC(TimingIndex) = BSFC_all;
+% injections(TimingIndex) = DataSetTimings(TimingIndex);
+% 
+% 
+% % save to struct or smthg data(i) 
+% end
 
 %% Compute aROHR
 if answer == 1 

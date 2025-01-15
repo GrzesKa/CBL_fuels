@@ -1,4 +1,4 @@
-clear all; clc;close all;
+%clear all; clc;close all;
 addpath( "Functions","Nasa","Functions2");
 
 %% Units
@@ -15,22 +15,6 @@ s       = 1;
 
 Ncycles = 69;  % Define the number of cycles
 RPM = 1500; %Defining the RPM
-%% Fuel properties
-
-% Select fuel
-selectedFuel = 'Diesel';
-
-
-% Define fuel properties
-FuelTable = table(...
-    {'Diesel'; 'HVO'; 'FAME'; 'GTL'}, ...        % Fuel names
-    [43e6; 43.7e6; 38.3e6; 44e6], ...            % Lower Heating Value [J/kg]
-    [52.2; 74.5; 55.2; 74], ...                  % Cetane number [-]
-    [2.62; 1.5; 2.1; 2.5], ...                   % CO2 [kg/L]
-    [9; 7; 11; 7], ...                           % NOx [g/kWh]
-    [836.1; 764; 882; 777.1], ...                % Density [kg/m^3]
-    [2.7638; 2.88; 4.43; 2.5774], ...            % Viscosity [mm^2/s]
-    'VariableNames', {'Fuel','LHV', 'Cetane', 'CO2','NOx', 'Density','Viscosity'});
 
 %% Load NASA maybe you need it at some point?
 % Global (for the Nasa database in case you wish to use it).
@@ -59,12 +43,44 @@ CaSOI = -3.2;  %Start of Injection - CHANGE IF WE PLAY AROUND WITH IT IN THE EXP
 
 %% Preallocate results structure
 numLoads = 3;
-EXP = 1; %Choose which experiment you want to load
-fuel = 'Diesel100';
-
+%Experiment = 1
+if Experiment == 1
+    fuel = 'Diesel100';
+    selectedFuel = 'Diesel'
+elseif Experiment == 2
+    fuel = 'GTL50';
+    selectedFuel = 'GTL50'
+elseif Experiment == 3
+    fuel = 'GTL100';
+    selectedFuel = 'GTL'
+elseif Experiment == 4
+    fuel = 'HVO50';
+    selectedFuel = 'HVO50'
+elseif Experiment == 5
+    fuel = 'HVO100'
+    selectedFuel = 'HVO'
+end
 DataSetTimings = DataSetCheck(fuel)
 
 results = struct ( 'Work', [], 'BSFC', [], 'Efficiency', [], 'aROHR', [], 'CumulativeHR', []) ;
+
+%% Fuel properties
+
+% Select fuel
+selectedFuel = 'Diesel';
+
+
+% Define fuel properties
+FuelTable = table(...
+    {'Diesel'; 'HVO'; 'FAME'; 'GTL'; 'HVO50'; 'GTL50'}, ...                            % Fuel names
+    [43e6; 43.7e6; 38.3e6; 44e6; mean([43e6, 43.7e6]); mean([43e6, 44e6])], ...        % Lower Heating Value [J/kg]
+    [52.2; 74.5; 55.2; 74; mean([52.2, 74.5]); mean([52.2, 74])], ...                  % Cetane number [-]
+    [2.62; 1.5; 2.1; 2.5; mean([2.62, 1.5]); mean([2.62, 2.5])], ...                   % CO2 [kg/L]
+    [9; 7; 11; 7; mean([9, 7]); mean([9, 7])], ...                                     % NOx [g/kWh]
+    [836.1; 764; 882; 777.1; mean([836.1, 764]); mean([836.1, 777.1])], ...            % Density [kg/m^3]
+    [2.7638; 2.88; 4.43; 2.5774; mean([2.7638, 2.88]); mean([2.7638, 2.5774])], ...    % Viscosity [mm^2/s]
+    'VariableNames', {'Fuel','LHV', 'Cetane', 'CO2','NOx', 'Density','Viscosity'});
+
 
 %% Emission data
 
@@ -125,6 +141,20 @@ W_per_cycle = W_cumm/Ncycles; %Average work
 
 [smooth_P,dpdCa] = Pegging_dpdCa(smooth_p,NCa, Ca);
 %rest of this was moved to "testing loop split"
+
+%% aROHR selection data saving
+if timing == chosen_aROHR
+    Ca_saved = Ca;
+    Gamma_at_angle_saved = Gamma_at_angle;
+    smooth_p_saved = smooth_p;
+    V_cycle_saved = V_cycle;
+    dVdCa_saved = dVdCa;
+    dpdCa_saved = dpdCa;
+    answer = 1;
+else
+    answer = 0;
+end
+
 end
 
 
@@ -160,10 +190,10 @@ EmissionLoadIndex = 50;
 filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
 avgCO2 = mean(filteredRows.CO2);
 avgNOx = mean(filteredRows.NOx);
-VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P, Gamma_at_angle)         %Cylinder volume when exhaust valve opens
+VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P, Gamma_at_angle) ;        %Cylinder volume when exhaust valve opens
 %Calculates the KPI for each loaded file and adds it to an array
 
-[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p);
+[Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p) ;
 KPI_index_injection = timing;
 Efficiency(T) = Efficiency_all;
 BSCO2(T) = BSCO2_all;
@@ -171,12 +201,16 @@ BSNOx(T) = BSNOx_all;
 BSFC(T) = BSFC_all;
 injections(T) = DataSetTimings(T);
 
+
 % save to struct or smthg data(i) 
 end
 
 %% Compute aROHR
- aROHR = computeAROHR(Ca, Gamma_at_angle, smooth_p, V_cycle, dVdCa, dpdCa);
-
+if answer == 1 
+    aROHR = computeAROHR(Ca_saved, Gamma_at_angle_saved, smooth_p_saved, V_cycle_saved, dVdCa_saved, dpdCa_saved);
+else
+    aROHR = computeAROHR(Ca, Gamma_at_angle, smooth_p, V_cycle, dVdCa, dpdCa);
+end
 %% Plot aROHR
 f4 = figure(4);
 set(f4, 'Position', [400 400 800 400]); % Figure size
@@ -187,7 +221,6 @@ legend()
 xlim([-45 135]);
 grid on;
 title('Apparent Rate of Heat Release (aROHR) vs Crank Angle, changing gamma');
-
 
 %% Find the Indices for CaSOI and CaEVO
 [Ca_from_start, aROHR_from_start] = indices(Ca, CaSOI, CaEVO, aROHR);

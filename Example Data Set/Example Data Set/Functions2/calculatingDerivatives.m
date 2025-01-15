@@ -27,8 +27,8 @@ for i = 1:NCa
     angle_dVdCa = dVdCa(i, :);
     sorted_dVdCa = sort(angle_dVdCa);
     n = length(sorted_dVdCa);
-    lower_bound = ceil(n * 0.025);  
-    upper_bound = floor(n * 0.975); 
+    lower_bound = ceil(n * 0.1);  
+    upper_bound = floor(n * 0.9); 
     filtered_dVdCa = sorted_dVdCa(lower_bound:upper_bound);
     filtered_averaged_dVdCa(i) = mean(filtered_dVdCa);
     

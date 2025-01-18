@@ -21,10 +21,9 @@ Elcompfuel = [SpS(1).Elcomp];               %Elemental composition of the fuel
 % Corrected mass of air
 mAir = 1.293 * Vbot; % Volume at BDC, mass in g
 
-T_initial = 293; % Initial temperature [K]
+
 R = 8314; % Universal gas constant [J/(mol*K)]
-T = zeros(size(Ca_single)); % Initialize temperature array
-T(1) = T_initial; % Set initial temperature
+
 
 % Corrected specific gas constant for air
 R_air = R / MAir; % J/(kg*K)

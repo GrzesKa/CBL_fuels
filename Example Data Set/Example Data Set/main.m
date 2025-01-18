@@ -176,8 +176,6 @@ if timing == chosen_aROHR
     dVdCa_saved = dVdCa;
     dpdCa_saved = dpdCa;
     answer = 1;
-else
-    answer = 0;
 end
 
 end

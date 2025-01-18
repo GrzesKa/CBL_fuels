@@ -47,18 +47,23 @@ numLoads = 3;
 if Experiment == 1
     fuel = 'Diesel100';
     selectedFuel = 'Diesel'
+    gammaEVO = 1.335568634585839;
 elseif Experiment == 2
     fuel = 'GTL50';
     selectedFuel = 'GTL50'
+    gammaEVO = 1.327003875458135;
 elseif Experiment == 3
     fuel = 'GTL100';
     selectedFuel = 'GTL'
+    gammaEVO = 1.331589796503069;
 elseif Experiment == 4
     fuel = 'HVO50';
     selectedFuel = 'HVO50'
+    gammaEVO = 1.329928877082411;
 elseif Experiment == 5
     fuel = 'HVO100'
     selectedFuel = 'HVO'
+    gammaEVO = 1.331650823030010;
 end
 DataSetTimings = DataSetCheck(fuel)
 
@@ -147,7 +152,7 @@ EmissionLoadIndex = 50;
 filteredRows = dataEmission(dataEmission.Load == EmissionLoadIndex & dataEmission.InjectionTiming == timing, :);
 avgCO2 = mean(filteredRows.CO2);
 avgNOx = mean(filteredRows.NOx);
-VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P) ;        %Cylinder volume when exhaust valve opens
+VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P, gammaEVO) ;        %Cylinder volume when exhaust valve opens
 %Calculates the KPI for each loaded file and adds it to an array
 
 [Efficiency_all, BSCO2_all, BSNOx_all, BSFC_all] = KPI_function(V_cycle, W_per_cycle,avgCO2,avgNOx, VolumeEmission,FuelTable,selectedFuel,smooth_p) ;

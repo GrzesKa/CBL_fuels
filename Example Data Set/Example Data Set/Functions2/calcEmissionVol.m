@@ -1,11 +1,10 @@
-function VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P)
+function VolumeEmission = calcEmissionVol(CaEVO, Cyl, smooth_P, gammaEVO)
 
 %valve opens at crank angle 149
 V_EVO = CylinderVolume(CaEVO, Cyl);
 P_EVO = smooth_P(2545); 
 Pamb = 101325;
-gamma_EVO = 1.34;
 %testing push
-VolumeEmission = V_EVO * (P_EVO / Pamb)^(1/gamma_EVO);
+VolumeEmission = V_EVO * (P_EVO / Pamb)^(1/gammaEVO);
 
 end
